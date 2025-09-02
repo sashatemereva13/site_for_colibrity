@@ -1,0 +1,82 @@
+.globalButtonsDiv {
+  position: fixed;
+  top: 16px;
+  right: 16px;
+  z-index: 1000;
+  display: flex;
+  gap: 10px;
+  pointer-events: auto;
+}
+.globalButton {
+  padding: 10px 12px;
+  border-radius: 10px;
+  border: 0.1px solid rgba(255, 255, 255, 0.8);
+  background: transparent;
+  color: #ffffff;
+  backdrop-filter: blur(8px);
+  cursor: pointer;
+}
+
+.confirmOverlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  background: rgba(0, 0, 0, 0.6);
+  backdrop-filter: blur(6px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 2000;
+}
+
+.confirmBox {
+  background: #1c1c1c;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  padding: 20px 24px;
+  border-radius: 12px;
+  color: white;
+  font-family: "NeueMachina", sans-serif;
+  text-align: center;
+  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.4);
+  width: 300px;
+}
+
+.confirmBox p {
+  margin-bottom: 16px;
+  font-size: 14px;
+}
+
+.confirmActions {
+  display: flex;
+  justify-content: center;
+  gap: 12px;
+}
+
+.confirmYes,
+.confirmNo {
+  padding: 8px 14px;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: transform 0.15s ease;
+}
+
+.confirmYes {
+  background: #ffffff;
+  color: #000;
+  border: none;
+}
+
+.confirmNo {
+  background: transparent;
+  color: white;
+  border: 1px solid rgba(255, 255, 255, 0.5);
+}
+
+.confirmYes:hover,
+.confirmNo:hover {
+  transform: translateY(-1px);
+}

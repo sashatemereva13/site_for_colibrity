@@ -3,29 +3,30 @@ import DraggableShape from "./DraggableShape";
 import "../css/GameUI.css";
 
 const shapes = [
-  { id: "circle", svg: "/gameShapes/circle.svg" },
-  { id: "square", svg: "/gameShapes/square.svg" },
-  { id: "triangle", svg: "/gameShapes/triangle.svg" },
-  { id: "star", svg: "/gameShapes/star.svg" },
+  { id: "design", svg: "/gameShapes/design.svg" },
+  { id: "development", svg: "/gameShapes/development.svg" },
+  { id: "innovation", svg: "/gameShapes/innovation.svg" },
+  { id: "marketing", svg: "/gameShapes/marketing.svg" },
 ];
 
-const cellSize = 130 + 20;
-const gridSize = 3;
+const isMobile = window.innerWidth < 768;
+const cellSize = isMobile ? 180 : 250; // 150 + 20
+const gridSize = 2;
+
+const marginLeft = isMobile ? 50 : 170;
+const marginTop = isMobile ? 80 : 70;
 
 const holePositions = [];
-
 for (let row = 0; row < gridSize; row++) {
   for (let col = 0; col < gridSize; col++) {
     holePositions.push({
-      left: `${100 + col * cellSize}px`,
-      top: `${row * cellSize}px`,
+      left: `${marginLeft + col * cellSize}px`,
+      top: `${marginTop + row * cellSize}px`,
     });
   }
 }
 
-console.log("Generated hole positions:", holePositions);
-
-const ShapeMatchingGame = () => {
+const ShapeMatchingGame = ({ onWin, onDragStart }) => {
   const [placedShapes, setPlacedShapes] = useState({});
   const [gameWon, setGameWon] = useState(false);
   const [holeLayout, setHoleLayout] = useState([]);
@@ -57,15 +58,18 @@ const ShapeMatchingGame = () => {
     };
 
     updateLayout();
-    const interval = setInterval(updateLayout, 5000);
+    const interval = setInterval(updateLayout, 1700);
     return () => clearInterval(interval);
   }, [placedShapes, lockedZones]);
 
   useEffect(() => {
     if (Object.keys(placedShapes).length === shapes.length) {
-      setGameWon(true);
+      if (!gameWon) {
+        setGameWon(true);
+        onWin?.();
+      }
     }
-  }, [placedShapes]);
+  }, [placedShapes, gameWon]);
 
   const handleDropSuccess = (id) => {
     const index = shapes.findIndex((s) => s.id === id);
@@ -112,15 +116,11 @@ const ShapeMatchingGame = () => {
                 shape={shape}
                 dropZones={dropZoneRefs}
                 onDropSuccess={handleDropSuccess}
+                onDragStart={onDragStart}
               />
             )
         )}
       </div>
-      <div className="gameRules">
-        <p>pull and shoot the shapes into the matching holes</p>
-      </div>
-
-      {gameWon && <div className="winMessage">✨ You Win! ✨</div>}
     </div>
   );
 };

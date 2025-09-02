@@ -1,0 +1,41 @@
+/* SparkEffect.css */
+
+.sparkContainer {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  pointer-events: none;
+  transform: translate(-50%, -50%);
+  width: 1000px;
+  height: 1000px;
+  overflow: visible;
+  z-index: 20;
+}
+
+.spark {
+  position: absolute;
+  z-index: 100;
+  width: 1px;
+  height: 1px;
+  background: cyan;
+  border-radius: 50%;
+  animation: sparkBurst 3s ease-out forwards;
+  opacity: 0.8;
+  left: 50%;
+  top: 50%;
+}
+
+@keyframes sparkBurst {
+  0% {
+    transform: translate(0, 0) scale(1);
+    opacity: 1;
+  }
+  100% {
+    transform: translate(
+        calc(-50px + 100px * var(--x)),
+        calc(-50px + 100px * var(--y))
+      )
+      scale(0.5);
+    opacity: 0;
+  }
+}

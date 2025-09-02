@@ -1,0 +1,61 @@
+.welcomeOverlay {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: end;
+  background: transparent;
+  backdrop-filter: blur(2px);
+}
+.welcomeCard {
+  width: min(92vw, 540px);
+  background: transparent;
+  border: none;
+  border-radius: 16px;
+  padding: 28px;
+  margin-bottom: 2rem;
+
+  text-align: center;
+  color: #000000;
+}
+.welcomeTitle {
+  margin: 0 0 6px 0;
+  font-size: 1.6rem;
+  line-height: 1.2;
+  letter-spacing: 0.2px;
+}
+.welcomeSubtitle {
+  margin: 0 0 18px 0;
+  opacity: 0.8;
+}
+.welcomeActions {
+  display: flex;
+  gap: 12px;
+  justify-content: center;
+  flex-wrap: wrap;
+  margin-top: 8px;
+}
+.welcomeBtn {
+  cursor: pointer;
+  border: none;
+  border-radius: 50%;
+  padding: 1rem;
+  font-size: 0.95rem;
+  background: #1f1f21;
+  color: #fff;
+  transition: transform 0.06s ease, background 0.2s ease;
+}
+.welcomeBtn:hover {
+  background: #2a2a2d;
+}
+.welcomeBtn:active {
+  transform: translateY(1px);
+}
+
+.welcomeHint {
+  margin-top: 14px;
+  font-size: 0.85rem;
+  opacity: 0.7;
+}

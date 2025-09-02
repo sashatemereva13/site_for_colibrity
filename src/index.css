@@ -13,8 +13,15 @@ body {
   width: 100vw;
 
   font-family: "NeueMachina";
-  background: #252525;
+  background: #000000;
   overflow: hidden;
+
+  touch-action: manipulation;
+  overscroll-behavior: none;
+}
+
+button {
+  font-family: "NeueMachina";
 }
 
 canvas {

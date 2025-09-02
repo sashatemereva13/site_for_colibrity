@@ -1,178 +1,194 @@
-import { useThree, useFrame } from "@react-three/fiber";
-import { Html } from "@react-three/drei";
-import { useRef, useState, useEffect } from "react";
+// src/sceneSwitch/Scene2.jsx
+import { useRef, useState, useEffect, useMemo, createRef } from "react";
+import { useFrame, useThree } from "@react-three/fiber";
+import { Cloud } from "@react-three/drei";
 import * as THREE from "three";
-import "../css/StartButton.css";
-import "../css/GameUI.css";
 
-import DraggableShape from "../game/DraggableShape";
-import ShapeHole from "../game/ShapeHole";
-import GlowingNetwork from "../game/GlowingNetwork";
-import teams from "../game/teams";
+import Scene2Scroll from "./Scene2Scroll";
+import Logo from "../secondScroll/Logo";
+import Inspire from "../secondScroll/Inspire";
+import BackGarden from "../secondScroll/BackGarden";
+import MouseTrail from "../secondScroll/MouseTrail";
 
-export default function Scene2({ onBack, gameStarted }) {
-  const { camera } = useThree();
-  const [score, setScore] = useState(0);
-  const [timeLeft, setTimeLeft] = useState(60);
-  const [shapesPlaced, setShapesPlaced] = useState(0);
-  const [gameOver, setGameOver] = useState(false);
-  const [networkVisible, setNetworkVisible] = useState(false);
-  const [lockedHoles, setLockedHoles] = useState({});
+export default function Scene2({
+  persistentBirdRef,
+  handoffFrom = null,
+  handoffTo = [-2, -2, -10],
+  handoffMs = 650,
+}) {
+  const isMobile = window.innerWidth < 768;
+  const { camera, size, gl } = useThree();
 
-  const progressRef = useRef(0);
+  // messages for Inspire nodes (left commented for now)
+  const messages = useMemo(
+    () => ["Ecommerce", "Site Vitrine", "Configurateur", "Site Immersif"],
+    []
+  );
 
-  const startPos = new THREE.Vector3(0, 1.2, 3);
-  const targetPos = new THREE.Vector3(0, 2, 8);
+  const phraseRefs = useMemo(
+    () => messages.map(() => createRef()),
+    [messages.length]
+  );
 
-  // Smoothly move camera as soon as Scene2 is mounted
-  useFrame(() => {
-    progressRef.current = Math.min(progressRef.current + 0.01, 1);
-    const lerpedPos = new THREE.Vector3().lerpVectors(
-      startPos,
-      targetPos,
-      progressRef.current
-    );
-    camera.position.lerp(lerpedPos, 0.1);
-    camera.lookAt(0, 1.5, 0);
+  const [phraseAngles, setPhraseAngles] = useState(() =>
+    Array(messages.length).fill(0)
+  );
+  useEffect(() => {
+    if (phraseAngles.length !== messages.length) {
+      setPhraseAngles(Array(messages.length).fill(0));
+    }
+  }, [messages.length, phraseAngles.length]);
+
+  const [scrollValue, setScrollValue] = useState(0);
+  const [activeIndex, setActiveIndex] = useState(0);
+
+  const tRef = useRef(0);
+  const wp = useRef(new THREE.Vector3()).current; // world position
+  const ws = useRef(new THREE.Vector3()).current; // world scale
+  const ndc = useRef(new THREE.Vector3()).current; // normalized device coords
+
+  const groupRef = useRef();
+  const hummingbird = persistentBirdRef ?? useRef(null);
+  const [handoffDone, setHandoffDone] = useState(false);
+  const startTs = useRef(null);
+
+  const logo = useRef();
+  const scrollRef = useRef(0);
+
+  // --- ensure the persistent bird is visible when Scene2 mounts
+  useEffect(() => {
+    const b = persistentBirdRef?.current;
+    if (b) {
+      b.visible = true;
+      b.layers.enable(0);
+    }
+  }, [persistentBirdRef]);
+
+  // Single WebGLRenderTarget for the trail
+  const trailRT = useMemo(
+    () =>
+      new THREE.WebGLRenderTarget(1, 1, {
+        depthBuffer: false,
+        stencilBuffer: false,
+        magFilter: THREE.LinearFilter,
+        minFilter: THREE.LinearFilter,
+        format: THREE.RGBAFormat,
+        type: THREE.UnsignedByteType,
+      }),
+    []
+  );
+
+  // keep RT at device-pixel resolution
+  useEffect(() => {
+    const dpr = gl.getPixelRatio();
+    trailRT.setSize(size.width * dpr, size.height * dpr);
+
+    const prev = gl.getRenderTarget();
+    gl.setRenderTarget(trailRT);
+    gl.clearColor(0, 0, 0, 0);
+    gl.clear(true, true, true);
+    gl.setRenderTarget(prev);
+    return () => trailRT.dispose();
+  }, [size.width, size.height, gl, trailRT]);
+
+  useFrame((_, delta) => {
+    tRef.current += delta;
+    const bird = persistentBirdRef?.current;
+    if (!bird) return;
+
+    bird.getWorldPosition(wp);
+    bird.getWorldScale(ws);
+    ndc.copy(wp).project(camera);
+
+    // --- Smooth handoff from Scene1 to Scene2 start pose
+    if (!handoffDone && handoffFrom) {
+      if (startTs.current === null) startTs.current = performance.now();
+      const t = Math.min((performance.now() - startTs.current) / handoffMs, 1);
+      const lx = THREE.MathUtils.lerp(handoffFrom[0], handoffTo[0], t);
+      const ly = THREE.MathUtils.lerp(handoffFrom[1], handoffTo[1], t);
+      const lz = THREE.MathUtils.lerp(handoffFrom[2], handoffTo[2], t);
+      bird.position.set(lx, ly, lz);
+      bird.visible = true;
+      camera.lookAt(bird.position);
+      if (t >= 1) setHandoffDone(true);
+      return; // gate normal Scene2Scroll-driven updates until lerp finishes
+    }
   });
 
-  // Timer logic only runs once game starts
   useEffect(() => {
-    if (gameStarted && timeLeft > 0 && !gameOver && shapesPlaced < 4) {
-      const timer = setTimeout(() => setTimeLeft((t) => t - 1), 1000);
-      return () => clearTimeout(timer);
-    } else if (timeLeft <= 0) {
-      setGameOver(true);
-    }
-  }, [gameStarted, timeLeft, gameOver, shapesPlaced]);
-
-  const handleCorrectDrop = (id) => {
-    setShapesPlaced((p) => p + 1);
-    setScore((s) => s + 100);
-    setLockedHoles((prev) => ({ ...prev, [id]: true }));
-  };
-
-  const handleWrongDrop = () => {
-    setTimeLeft((t) => Math.max(0, t - 2));
-  };
-
-  useEffect(() => {
-    if (shapesPlaced === 4) {
-      setNetworkVisible(true);
-    }
-  }, [shapesPlaced]);
+    // logs both index and its text
+    console.log(`[Inspire Active] #${activeIndex}: "${messages[activeIndex]}"`);
+  }, [activeIndex, messages]);
 
   return (
-    <>
-      {/* Scene background & lighting */}
-      <color attach="background" args={["#B96921"]} />
+    <group ref={groupRef}>
+      {/* <OrbitControls ref={controlsRef} enabled={false} /> */}
+
+      <Scene2Scroll
+        logo={logo}
+        hummingbird={hummingbird}
+        phraseRefs={phraseRefs}
+        scrollRef={scrollRef}
+        setScrollValue={setScrollValue}
+        setPhraseAngles={setPhraseAngles}
+        onActiveIndex={setActiveIndex}
+        enabled={handoffDone || handoffFrom == null}
+      />
+
+      {/* lights */}
       <ambientLight intensity={0.6} />
-      <directionalLight position={[5, 10, 5]} intensity={1.2} castShadow />
+      <directionalLight
+        position={[3, 6, 5]}
+        intensity={1}
+        castShadow
+        shadow-mapSize-width={2048}
+        shadow-mapSize-height={2048}
+        shadow-camera-near={1}
+        shadow-camera-far={30}
+        shadow-camera-left={-12}
+        shadow-camera-right={12}
+        shadow-camera-top={12}
+        shadow-camera-bottom={-12}
+      />
 
-      {/* Timer */}
-      {gameStarted && shapesPlaced < 4 && !gameOver && (
-        <Html position={[0, 5, 0]} transform pointerEvents="none">
-          <div className="timer">Time: {timeLeft}s</div>
-        </Html>
-      )}
+      {/* content */}
+      <Logo ref={logo} position={[0, 0, 0]} />
 
-      {/* Score */}
-      {gameStarted && (
-        <Html position={[0, 4, 0]} transform pointerEvents="none">
-          <div className="score">Score: {score}</div>
-        </Html>
-      )}
-
-      {/* Shapes progress */}
-      {gameStarted && shapesPlaced < 4 && !gameOver && (
-        <Html position={[0, -1, 0]} transform pointerEvents="none">
-          <div className="shapesCounter">
-            <div style={{ marginBottom: "0.5rem" }}>
-              {shapesPlaced} / 4 Shapes Placed
-            </div>
-            <div>
-              <div
-                style={{
-                  width: `${(shapesPlaced / 4) * 100}%`,
-                  height: "100%",
-                  background: "#5bffec",
-                  transition: "width 0.3s ease",
-                }}
-              />
-            </div>
-          </div>
-        </Html>
-      )}
-
-      {/* Holes & shapes */}
-      {teams.map((team) => (
-        <ShapeHole
-          key={team.id}
-          {...team}
-          position={team.holePos}
-          speed={gameStarted ? 0.4 : 0}
-          locked={lockedHoles[team.id]}
+      {messages.map((text, i) => (
+        <Inspire
+          key={i}
+          ref={phraseRefs[i]}
+          text={text}
+          isActive={activeIndex === i}
+          position={[0, 0, 0]}
+          fontSize={3} // tweak to taste
+          maxWidth={10.5} // nice wrapping width
         />
       ))}
 
-      {teams.map((team) => (
-        <DraggableShape
-          key={team.id}
-          {...team}
-          target={{ id: team.id, position: team.holePos }}
-          onCorrectDrop={() => handleCorrectDrop(team.id)}
-          onWrongDrop={handleWrongDrop}
-          disabled={!gameStarted}
-        />
-      ))}
+      <Cloud
+        segments={40}
+        position={[0, 0, 20]}
+        seed={1}
+        scale={3}
+        volume={50}
+        color="#fdc2ff"
+        fade={50}
+      />
 
-      {/* Network reveal after success */}
-      {/* {networkVisible && (
+      {!isMobile && (
         <>
-          <GlowingNetwork
-            points={[
-              new THREE.Vector3(-3, 2, 0),
-              new THREE.Vector3(-1, 2, 0),
-              new THREE.Vector3(1, 2, 0),
-              new THREE.Vector3(3, 2, 0),
-              new THREE.Vector3(-3, 2, 0),
-            ]}
-          />
-          <Html center position={[0, 3, 0]}>
-            <div
-              style={{
-                color: "white",
-                fontSize: "2rem",
-                textAlign: "center",
-              }}
-            >
-              Every team’s effort is vital.
-              <br />
-              Together, we deliver.
-            </div>
-            <button
-              className="backButton"
-              onClick={onBack}
-              style={{ marginTop: "1rem" }}
-            >
-              Continue
-            </button>
-          </Html>
-        </>
-      )} */}
+          <MouseTrail trailMap={trailRT} />
 
-      {/* Game over */}
-      {gameOver && (
-        <Html center position={[0, 3, 0]}>
-          <div style={{ color: "red", fontSize: "2rem" }}>Time’s up!</div>
-          <button
-            className="backButton"
-            onClick={() => window.location.reload()}
-          >
-            Try Again
-          </button>
-        </Html>
+          {/* <BackGarden
+            trailMap={trailRT.texture}
+            opacity={0.9}
+            tile={[7, 7]}
+            tint={[1, 1, 1]}
+            driftPx={[5, 0]}
+          /> */}
+        </>
       )}
-    </>
+    </group>
   );
 }
