@@ -321,6 +321,7 @@ export default function Scene1({
         screenById={tvScreenById}
         activeId={tvActiveId}
       />
+
       <TVGameSlotPositioner
         tvRoot={tvRef}
         materialName="Game"

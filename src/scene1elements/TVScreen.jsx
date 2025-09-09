@@ -6,23 +6,24 @@ import { useGLTF, useTexture } from "@react-three/drei";
 export default function TVScreen({
   isMobile,
   tvRef,
+
+  // desktop model stays your default
   modelUrl = "/models/TV.glb",
+  // add a mobile override
+  mobileModelUrl = "/models/iPhoneGame.glb",
 
-  // EITHER: dynamic map mode
-  screenById = null, // { marketing: "/TVpics/marketing.png", ... }
+  screenById = null,
   activeId = null,
-
-  // OR: single image mode (optional)
   screenTextureUrl = null,
-
-  // Target material name(s) inside the GLB
-  // e.g., "Description" or ["Description","Button"]
   descriptionMatName = "Description",
 }) {
-  const { scene } = useGLTF(modelUrl);
+  // ⬇️ choose model by device (everything else unchanged)
+  const selectedModelUrl = isMobile ? mobileModelUrl : modelUrl;
+
+  const { scene } = useGLTF(selectedModelUrl);
   const tv = useMemo(() => scene.clone(true), [scene]);
 
-  // --- choose texture ---
+  // --- choose texture (unchanged) ---
   const ids = useMemo(
     () => (screenById ? Object.keys(screenById) : []),
     [screenById]
@@ -51,7 +52,6 @@ export default function TVScreen({
     tex.magFilter = THREE.LinearFilter;
   }
 
-  // --- targeting helpers ---
   const targetNames = useMemo(() => {
     const arr = Array.isArray(descriptionMatName)
       ? descriptionMatName
@@ -59,10 +59,8 @@ export default function TVScreen({
     return arr.map((n) => String(n || "").toLowerCase());
   }, [descriptionMatName]);
 
-  // Keep references to the actual materials we should update on every change
-  const targetsRef = useRef([]); // array of { obj, index, mat }
+  const targetsRef = useRef([]);
 
-  // --- helpers ---
   function makeChecker(n = 10) {
     const s = 256,
       c = document.createElement("canvas");
@@ -94,141 +92,90 @@ export default function TVScreen({
     const texAspect = img.width / img.height;
 
     map.center.set(0.5, 0.5);
-
     let sx = 1,
       sy = 1;
     if (mode === "cover") {
       if (texAspect > geomAspect) {
-        // image wider → crop sides
         sx = geomAspect / texAspect;
         sy = 1;
       } else {
-        // image taller → crop top/bottom
         sx = 1;
         sy = texAspect / geomAspect;
       }
     } else {
-      // "contain"
       if (texAspect > geomAspect) {
-        // letterbox top/bottom
         sx = 1;
         sy = texAspect / geomAspect;
       } else {
-        // pillarbox sides
         sx = geomAspect / texAspect;
         sy = 1;
       }
     }
-
     map.repeat.set(sx, sy);
     map.offset.set((1 - sx) / 2, (1 - sy) / 2);
     map.needsUpdate = true;
   }
 
-  // 1) Collect/replace target materials once per model / mat names
   useEffect(() => {
     targetsRef.current = [];
-
     tv.traverse((obj) => {
       if (!obj.isMesh) return;
-
       const mats = Array.isArray(obj.material) ? obj.material : [obj.material];
-      // Dump mesh + mat names to confirm structure
-
       let changed = false;
-
       mats.forEach((m, i) => {
         if (!m) return;
         const name = (m.name || "").toLowerCase();
         const isTarget =
           targetNames.includes(name) || m.userData?.__tvDescription === true;
-
         if (isTarget) {
           if (!m.isMeshBasicMaterial) {
-            // Replace with MeshBasic (no lighting issues), preserve name
             const newMat = new THREE.MeshBasicMaterial({ toneMapped: false });
             newMat.name = m.name || descriptionMatName;
             newMat.userData.__tvDescription = true;
             newMat.map = tex || null;
-
             mats[i] = newMat;
             targetsRef.current.push({ obj, index: i, mat: newMat });
             changed = true;
           } else {
-            // Already ours
             m.userData.__tvDescription = true;
             targetsRef.current.push({ obj, index: i, mat: m });
           }
         }
       });
-
       if (changed) obj.material = Array.isArray(obj.material) ? mats : mats[0];
     });
   }, [tv, targetNames, descriptionMatName, tex]);
 
-  // 2) Measure slots (Button/Description/Game) — DO NOT clear targetsRef here
   useEffect(() => {
     tv.traverse((obj) => {
       if (!obj.isMesh) return;
-
       const mats = Array.isArray(obj.material) ? obj.material : [obj.material];
-
       mats.forEach((m) => {
         if (!m) return;
         const name = (m.name || "").toLowerCase();
-
         if (["button", "description", "game"].includes(name)) {
           const geom = obj.geometry;
           geom.computeBoundingBox();
           geom.computeBoundingSphere();
-
-          const bbox = geom.boundingBox;
-          const size = new THREE.Vector3();
-          bbox.getSize(size);
-
-          const sig = (num) => Number.parseFloat(num.toPrecision(2));
-          const aspect =
-            size.y !== 0
-              ? Number.parseFloat((size.x / size.y).toPrecision(2))
-              : 0;
         }
       });
     });
   }, [tv]);
 
-  // 3) Apply texture (or checker) + fit + per-target logs
   useEffect(() => {
     const img = tex?.image || null;
-
     const fallback = makeChecker(12);
-
     targetsRef.current.forEach(({ mat, obj }) => {
       const hasUV = !!obj.geometry.attributes.uv;
-
       const map = img && hasUV ? tex : fallback;
-
       map.colorSpace = THREE.SRGBColorSpace;
       map.minFilter = THREE.LinearFilter;
       map.magFilter = THREE.LinearFilter;
       map.wrapS = map.wrapT = THREE.RepeatWrapping;
-
       fitTextureToGeom(map, obj.geometry, "cover");
-
-      // map.repeat.x *= -1;
-      // // map.offset.x = 1 - map.offset.x; // compensate for negative repeat
-      // map.needsUpdate = true;
-
-      mat.map = map;
-      // ensure no color tint over the texture
       if (mat.color && mat.color.isColor) mat.color.set("#ffffff");
+      mat.map = map;
       mat.needsUpdate = true;
-
-      // per-target geometry aspect for quick fit check
-      const bb =
-        obj.geometry.boundingBox ||
-        (obj.geometry.computeBoundingBox(), obj.geometry.boundingBox);
-      const size = new THREE.Vector3();
-      bb.getSize(size);
     });
   }, [tex, activeId]);
 
@@ -242,9 +189,12 @@ export default function TVScreen({
       rotation={[0, Math.PI, 0]}
       dispose={null}
     >
-      <primitive object={tv} />
+      {/* key ensures re-mount when switching modelUrl */}
+      <primitive object={tv} key={selectedModelUrl} />
     </group>
   );
 }
 
+// Preload both models so switching is instant
 useGLTF.preload("/models/TV.glb");
+useGLTF.preload("/models/iPhoneGame.glb");

@@ -7,6 +7,7 @@ export default function TVGameSlotPositioner({
   materialName = "Game", // which material area to target
   screenMeshName = "screen", // mesh name contains this (case-insensitive)
   rootId = "tvGameSlot", // DOM id of the overlay div
+  isMobile = false,
 }) {
   const { camera, size, scene, gl } = useThree();
   const domRef = useRef(null);
@@ -140,8 +141,8 @@ export default function TVGameSlotPositioner({
     const w = Math.max(0, maxX - minX);
     const h = Math.max(0, maxY - minY);
 
-    const BASE_W = 700;
-    const BASE_H = 900;
+    const BASE_W = isMobile ? 350 : 700;
+    const BASE_H = isMobile ? 450 : 900;
 
     const scale = Math.min(w / BASE_W, h / BASE_H);
     const offX = (w - BASE_W * scale) / 2;

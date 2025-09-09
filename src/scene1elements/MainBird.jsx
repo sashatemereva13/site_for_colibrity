@@ -4,6 +4,7 @@ import * as THREE from "three";
 import { useEffect } from "react";
 import Bird from "./Bird";
 import Laptop from "./Laptops/Laptop";
+import TableSingular from "./Tables/TableSingular";
 
 const MainBird = forwardRef(({ scroll, mainBirdLaptopsOn = false }, ref) => {
   const mainBirdRef = useRef();
@@ -69,36 +70,13 @@ const MainBird = forwardRef(({ scroll, mainBirdLaptopsOn = false }, ref) => {
     <>
       <Laptop
         poweredOn={mainBirdLaptopsOn}
-        position={[0.6, 0.9, 7.6]}
+        position={[0.6, 0.75, 7.4]}
         src="/TV/TV_Design.mp4"
       />
 
       <Bird ref={mainBirdRef} />
 
-      {/* <object3D ref={targetRef} /> */}
-
-      {/* Desk */}
-      <group position={[0.6, 0, 7.6]}>
-        {/* table leg */}
-        <mesh castShadow position={[0, 0.5, 0]}>
-          <cylinderGeometry args={[0.15, 0.2, 0.7]} />
-          <meshPhysicalMaterial
-            color="rgba(255, 231, 252, 1)"
-            roughness={0.8}
-            metalness={0.1}
-          />
-        </mesh>
-
-        {/* tabletop */}
-        <mesh castShadow position={[0, 0.85, 0]}>
-          <cylinderGeometry args={[0.4, 0.4, 0.01]} />
-          <meshStandardMaterial
-            color="#ffd4f9"
-            roughness={0.8}
-            metalness={0.1}
-          />
-        </mesh>
-      </group>
+      <TableSingular position={[-1.2, -0.1, 1.6]} />
     </>
   );
 });

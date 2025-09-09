@@ -1,19 +1,26 @@
-// src/scene1elements/WallLinesMaterial.jsx
 import * as THREE from "three";
 import { useMemo } from "react";
 
-function WallMaterial({ height = 10, radius = 12 }) {
+function WallMaterial({
+  zStart = 120,
+  zEnd = 0,
+  numLines = 20,
+  thickness = 1.95,
+  base = "#730F2E",
+  lineCol1 = "#ffe5f4", // bright at start
+  lineCol2 = "#b57089", // darker toward end
+}) {
   const uniforms = useMemo(
     () => ({
-      uBase: { value: new THREE.Color("#d7d5d6") },
-      uLineCol1: { value: new THREE.Color("#915d70") },
-      uLineCol2: { value: new THREE.Color("#8c4b63") },
-      uHeight: { value: height },
-      uRadius: { value: radius },
-      uNumLines: { value: 5 }, // how many lines
-      uThickness: { value: 0.08 }, // line width
+      uBase: { value: new THREE.Color(base) },
+      uLineCol1: { value: new THREE.Color(lineCol1) },
+      uLineCol2: { value: new THREE.Color(lineCol2) },
+      uZStart: { value: zStart },
+      uZEnd: { value: zEnd },
+      uNumLines: { value: numLines },
+      uThickness: { value: thickness },
     }),
-    [height, radius]
+    [base, lineCol1, lineCol2, zStart, zEnd, numLines, thickness]
   );
 
   const vertexShader = /* glsl */ `
@@ -32,36 +39,37 @@ function WallMaterial({ height = 10, radius = 12 }) {
     uniform vec3 uBase;
     uniform vec3 uLineCol1;
     uniform vec3 uLineCol2;
-    uniform float uHeight;
-uniform float uNumLines;
-uniform float uThickness;
+    uniform float uZStart;
+    uniform float uZEnd;
+    uniform float uNumLines;
+    uniform float uThickness;
 
-float bandGlow(float y, float lineY, float thickness) {
-  return exp(-pow((y - lineY) / thickness, 2.0));
-}
+    float bandGlow(float a, float b, float t) {
+      return exp(-pow((a - b) / t, 2.0));
+    }
 
-void main() {
-  vec3 col = uBase;
+    void main() {
+      vec3 col = uBase;
 
-  // Loop over lines
-  for (int i = 0; i < 20; i++) {   // max 20 possible
-    if (float(i) >= uNumLines) break;
+      float axisZ = vWorldPos.z;
+      float lenZ = uZEnd - uZStart;
 
-    // Fractional height for this line
-    float frac = (float(i) + 1.0) / (uNumLines + 1.0);
-    float lineY = frac * uHeight;
+      for (int i = 0; i < 64; i++) {
+        if (float(i) >= uNumLines) break;
 
-    // Glow
-    float g = bandGlow(vWorldPos.y, lineY, uThickness);
+        float frac = (float(i) + 1.0) / (uNumLines + 1.0);
+        float lineZ = mix(uZStart, uZEnd, frac);
 
-    // Alternate colors: violet/orange/violet/...
-    vec3 lineColor = mix(uLineCol1, uLineCol2, mod(float(i), 2.0));
-    col += lineColor * g * 2.0;
-  }
+        float g = bandGlow(axisZ, lineZ, uThickness);
 
-  gl_FragColor = vec4(col, 1.0);
-}
+        // Fade color from bright (lineCol1) to dark (lineCol2)
+        vec3 lineColor = mix(uLineCol1, uLineCol2, frac);
 
+        col += lineColor * g * 2.0;
+      }
+
+      gl_FragColor = vec4(col, 1.0);
+    }
   `;
 
   return (

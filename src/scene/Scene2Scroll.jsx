@@ -27,7 +27,7 @@ export default function Scene2Scroll({
   const { camera, scene } = useThree();
 
   // --- flight timeline ---
-  const flyStart = 0.75;
+  const flyStart = 0.7;
   const flyEnd = 1.0;
 
   // track last t-driven index so we don't spam
@@ -184,7 +184,7 @@ export default function Scene2Scroll({
 
     // camera follow
     const targetY = flyY;
-    const targetZ = -t * 10;
+    const targetZ = -t * 1;
     const targetPos = new THREE.Vector3(0, targetY, targetZ);
     camera.position.lerp(targetPos, 0.02);
     if (hummingbird?.current) camera.lookAt(hummingbird.current.position);

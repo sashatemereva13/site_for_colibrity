@@ -5,6 +5,7 @@ import * as THREE from "three";
 import { SkeletonUtils } from "three-stdlib";
 import { useTheme, MATCAPS } from "../allScenes/BirdThemes";
 
+
 const MATCAP_NAME_RE = /^Material[_\.]?0*07$/i;
 const TINT_NAME_RE = /^Material[_\.]?0*08$/i;
 
@@ -20,14 +21,17 @@ function tintWithShade(hex, shade) {
 const Bird = forwardRef((props, ref) => {
   const { matcapIndex, tints, tintIndex, shade } = useTheme();
 
-  // Cached GLTF (don’t mutate it)
+  // Cached GLTF
   const gltf = useGLTF("/models/hummingbird.glb");
   useGLTF.preload("/models/hummingbird.glb");
+
+  // playing around
+  // const gltf = useGLTF("/models/colibriParticles.glb");
+  // useGLTF.preload("/models/colibriParticles.glb");
 
   // Per-instance deep clone (prevents cross-talk)
   const scene = useMemo(() => SkeletonUtils.clone(gltf.scene), [gltf.scene]);
 
-  // Bind animations to the clone
   const { actions, names } = useAnimations(gltf.animations, scene);
   useEffect(() => {
     actions[names[0]]?.reset().setLoop(THREE.LoopRepeat, Infinity).play();
@@ -119,9 +123,11 @@ const Bird = forwardRef((props, ref) => {
   }, [tintColor]);
 
   return (
-    <group ref={ref} {...props}>
-      <primitive object={scene} scale={0.2} />
-    </group>
+    <>
+      <group ref={ref} {...props}>
+        <primitive object={scene} scale={0.2} />
+      </group>
+    </>
   );
 });
 

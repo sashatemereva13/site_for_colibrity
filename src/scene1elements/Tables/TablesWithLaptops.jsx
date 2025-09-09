@@ -2,6 +2,7 @@
 import Candy from "./Candy"; // use the external component
 import Laptop from "../Laptops/Laptop";
 import * as THREE from "three";
+import Tables from "./Tables";
 
 const ROW_SRCS = [
   "/TV/TV_AR.mp4",
@@ -14,6 +15,7 @@ const ROW_SRCS = [
 const TablesWithLaptops = ({ laptopsOn = false }) => {
   return (
     <>
+      <Tables />
       {[...Array(5)].map((_, row) =>
         [...Array(6)].map((_, col) => {
           const x = col * 1.2 - 3.0;
@@ -23,32 +25,32 @@ const TablesWithLaptops = ({ laptopsOn = false }) => {
           return (
             <group key={`${row}-${col}`}>
               {/* table leg */}
-              <mesh castShadow position={[x, 0.5, z]}>
+              {/* <mesh castShadow position={[x, 0.5, z]}>
                 <cylinderGeometry args={[0.15, 0.2, 0.7]} />
                 <meshPhysicalMaterial
-                  color="rgba(244, 216, 241, 1)"
+                  color="#e2a9be"
                   roughness={0.8}
                   metalness={0.1}
                 />
-              </mesh>
+              </mesh> */}
 
               {/* tabletop */}
-              <mesh castShadow position={[x, 0.85, z]}>
+              {/* <mesh castShadow position={[x, 0.85, z]}>
                 <cylinderGeometry args={[0.4, 0.4, 0.01]} />
                 <meshStandardMaterial
-                  color="#fae7f6"
+                  color="#e087cd"
                   roughness={0.8}
                   metalness={0.1}
                 />
-              </mesh>
+              </mesh> */}
 
               {/* laptop */}
-              <Laptop position={[x, 0.85, z]} src={src} poweredOn={laptopsOn} />
+              <Laptop position={[x, 0.66, z]} src={src} poweredOn={laptopsOn} />
 
               {/* row 0: animated candy above laptop */}
               {row === 0 && (
                 <Candy
-                  position={[x, 0.7, z]}
+                  position={[x, 0.5, z]}
                   rotation={[0, Math.PI * 0.25, 0]}
                   scale={0.25}
                   actionName="Idle" // change to match Blender action name

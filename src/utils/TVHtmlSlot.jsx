@@ -10,11 +10,15 @@ export default function TVHtmlSlot({
   screenMeshName = "screen",
   BASE_W = 700,
   BASE_H = 900,
+  isMobile = false,
   offset = 0.002,
   children,
   ...htmlProps // forwarded to <Html/>
 }) {
   const { scene } = useThree();
+
+  const finalBaseW = BASE_W ?? (isMobile ? 500 : 700);
+  const finalBaseH = BASE_H ?? (isMobile ? 600 : 900);
 
   const [target, setTarget] = useState(() => ({
     mesh: null,
@@ -120,8 +124,8 @@ export default function TVHtmlSlot({
             position={[cx + ox, cy + oy, cz + oz]}
             zIndexRange={[10, 0]}
             style={{
-              width: `${BASE_W}px`,
-              height: `${BASE_H}px`,
+              width: `${finalBaseW}px`,
+              height: `${finalBaseH}px`,
               pointerEvents: "auto",
               ...(htmlProps.style || {}),
             }}

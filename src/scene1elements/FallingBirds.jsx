@@ -39,7 +39,7 @@ function AnimatedBird({
     // falling logic (kept from your version)
     const t = scroll.offset * scroll.pages;
     const localT = THREE.MathUtils.clamp((t - 1) / 5, 0, 1);
-    const y = THREE.MathUtils.lerp(5, 1.15, localT);
+    const y = THREE.MathUtils.lerp(5, 1, localT);
 
     if (group.current) {
       group.current.position.set(pos.x, y, pos.z);

@@ -1,42 +1,48 @@
 // src/scene1elements/PortalShader.jsx
-// TV-static portal: solid circular surface (no center hole by default)
-
 import * as THREE from "three";
-import { useMemo, useRef } from "react";
+import React, { useMemo, useRef, useImperativeHandle, forwardRef } from "react";
 import { useFrame } from "@react-three/fiber";
 
 const TUNE = {
-  // portal shape
   radius: 4.0,
   segments: 96,
 
-  // optional inner cutout (0 = no hole)
-  innerCut: 0.0, // set > 0 to create a donut hole
-  innerSoftness: 0.0, // 0..0.5 (feather at inner edge)
+  innerCut: 0.0,
+  innerSoftness: 0.0,
 
-  // static look
   grainSize: 220.0,
   speed: 3.0,
   saturation: 0.3,
   contrast: 0.6,
   brightness: 1.0,
 
-  // edge feather
-  edgeSoftness: 0.5, // 0..~0.6 (soft rim)
-
-  // subtle glow
+  edgeSoftness: 0.5,
   vignetteBoost: 0.15,
 
-  // blending
   toneMapped: false,
   blending: "normal", // "additive" or "normal"
+
+  // NEW: stretch behavior
+  extrudeMax: 10.2, // how deep the split can get (scene units)
+  extrudeDecay: 1.6, // how fast the stretch relaxes back (s^-1)
+  pulseDecay: 1.5, // glow decay
 };
 
-export default function PortalSurface({ position = [0, 0, 0] }) {
-  const matRef = useRef();
+const PortalSurface = forwardRef(function PortalSurface(
+  {
+    position = [0, 0, 0],
+    radius = TUNE.radius,
+    segments = TUNE.segments,
+    blending = TUNE.blending, // "normal" | "additive"
+  },
+  ref
+) {
   const time = useRef(0);
+  const pulseVal = useRef(0);
+  const extrudeVal = useRef(0);
 
-  const uniforms = useMemo(
+  // shared uniforms object; we clone it for the two materials
+  const baseUniforms = useMemo(
     () => ({
       uTime: { value: 0 },
       uGrain: { value: TUNE.grainSize },
@@ -46,26 +52,98 @@ export default function PortalSurface({ position = [0, 0, 0] }) {
       uBrightness: { value: TUNE.brightness },
       uEdgeSoft: { value: TUNE.edgeSoftness },
       uVignette: { value: TUNE.vignetteBoost },
-      uRadius: { value: TUNE.radius },
+      uRadius: { value: radius },
       uInner: { value: TUNE.innerCut },
       uInnerSoft: { value: TUNE.innerSoftness },
+      uPulse: { value: 0.0 }, // glow pulse
+      uExtrude: { value: 0.0 }, // depth split magnitude
+      uDir: { value: 1.0 }, // +1 for front, -1 for back
+      uOpacity: { value: 1.0 },
+    }),
+    [radius]
+  );
+
+  // two *separate* material refs (they share shader code but not uniforms)
+  const frontMat = useRef();
+  const backMat = useRef();
+
+  useImperativeHandle(
+    ref,
+    () => ({
+      // one call to animate both brightness+glow and z-stretch
+      pulse: (amp = 1.0) => {
+        pulseVal.current = Math.min(2.0, pulseVal.current + amp);
+        // convert amp (≈0–2) into world-space stretch with a cap
+        const add = amp * (TUNE.extrudeMax * 0.6);
+        extrudeVal.current = Math.min(
+          TUNE.extrudeMax,
+          extrudeVal.current + add
+        );
+      },
+      // if you want to drive only stretch:
+      stretch: (depth = 0.8) => {
+        extrudeVal.current = Math.min(
+          TUNE.extrudeMax,
+          extrudeVal.current + depth
+        );
+      },
     }),
     []
   );
 
   useFrame((_, dt) => {
     time.current += dt;
-    if (matRef.current) matRef.current.uniforms.uTime.value = time.current;
+
+    // decay
+    pulseVal.current = Math.max(0, pulseVal.current - dt * TUNE.pulseDecay);
+    extrudeVal.current = Math.max(
+      0,
+      extrudeVal.current - dt * TUNE.extrudeDecay
+    );
+
+    const t = time.current;
+
+    const update = (mat, dir) => {
+      if (!mat) return;
+      const u = mat.uniforms;
+      u.uTime.value = t;
+      u.uPulse.value = pulseVal.current;
+      u.uExtrude.value = extrudeVal.current;
+      u.uDir.value = dir;
+    };
+
+    update(frontMat.current, +1.0);
+    update(backMat.current, -1.0);
   });
 
   const vertexShader = /* glsl */ `
     varying vec2 vUv;
     varying vec2 vPos; // local XY
 
+    uniform float uRadius;
+    uniform float uExtrude; // magnitude
+    uniform float uDir;     // +1 (front) / -1 (back)
+
+    // mapped falloff: 0 at center -> 1 near rim
+    float rimFalloff(vec2 pos, float radius){
+      float r = length(pos);
+      float f = smoothstep(0.0, radius, r);
+      // emphasize rim a bit
+      return pow(f, 0.65);
+    }
+
     void main() {
       vUv = uv;
       vPos = position.xy;
-      gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+
+      // base position
+      vec3 pos = position;
+
+      // stretch along local Z with rim falloff
+      float k = rimFalloff(vPos, uRadius);
+      pos.z += uExtrude * uDir * k;
+
+      gl_Position = projectionMatrix * modelViewMatrix * vec4(pos, 1.0);
     }
   `;
 
@@ -86,6 +164,8 @@ export default function PortalSurface({ position = [0, 0, 0] }) {
     uniform float uRadius;
     uniform float uInner;
     uniform float uInnerSoft;
+    uniform float uPulse;
+    uniform float uOpacity;
 
     float hash21(vec2 p){
       p = fract(p * vec2(123.34, 456.21));
@@ -110,60 +190,85 @@ export default function PortalSurface({ position = [0, 0, 0] }) {
     void main(){
       float r = length(vPos);
 
-      // Outer rim feather (fade near uRadius)
-      float outer0 = uRadius * max(0.0, 1.0 - uEdgeSoft);
-      float outer1 = uRadius;
-      float outerEdge = smoothstep(outer0, outer1, r); // 0 center -> 1 rim
-      float outerMask = 1.0 - outerEdge;               // 1 inside -> 0 rim
+      // Outer rim feather
+      float expand = 0.12 * uPulse;
+      float outer0 = uRadius * max(0.0, 1.0 - uEdgeSoft) + expand;
+      float outer1 = uRadius + expand;
+      float outerEdge = smoothstep(outer0, outer1, r);
+      float outerMask = 1.0 - outerEdge;
 
-      // Optional inner cut (kept 0 for solid center)
+      // Optional inner cut
       float innerMask = 1.0;
       if (uInner > 0.0) {
         float inner0 = max(0.0, uInner);
         float inner1 = inner0 * (1.0 + clamp(uInnerSoft, 0.0, 0.5));
-        innerMask = smoothstep(inner0, inner1, r); // 0 inside hole -> 1 solid
+        innerMask = smoothstep(inner0, inner1, r);
       }
 
       float alpha = outerMask * innerMask;
       if (alpha <= 0.001) discard;
 
-      // Grain cells
+      // Grain cells + flicker
       vec2 grid = vUv * uGrain;
-
-      // TV flicker (integer time steps)
       float t = floor(uTime * uSpeed);
       grid += vec2(t * 17.0, t * 9.0);
-
       vec3 col = hashRGB(floor(grid));
 
-      // Inner lift
-      float vign = 1.0 - smoothstep(0.0, uRadius, r);
-      col += uVignette * vign;
+      // Inner lift + pulse glow
+      float vign = 1.0 - smoothstep(0.0, uRadius + expand, r);
+      col += (uVignette + 0.6 * uPulse) * vign;
 
       col = toSaturated(col, uSaturation);
       col = applyCB(col, uContrast, uBrightness);
 
-      gl_FragColor = vec4(col, alpha);
+      gl_FragColor = vec4(col, alpha * (1.0 + 0.35 * uPulse) * uOpacity);
     }
   `;
 
   const blendingMode =
-    TUNE.blending === "normal" ? THREE.NormalBlending : THREE.AdditiveBlending;
+    blending === "normal" ? THREE.NormalBlending : THREE.AdditiveBlending;
+
+  // One shared geometry for both layers
+  const geo = useMemo(
+    () => new THREE.CircleGeometry(radius, segments),
+    [radius, segments]
+  );
 
   return (
-    <mesh position={position} rotation={[0, 0, 0]} frustumCulled={false}>
-      <circleGeometry args={[TUNE.radius, TUNE.segments]} />
-      <shaderMaterial
-        ref={matRef}
-        vertexShader={vertexShader}
-        fragmentShader={fragmentShader}
-        uniforms={uniforms}
-        transparent
-        depthWrite={false}
-        depthTest
-        blending={blendingMode}
-        toneMapped={TUNE.toneMapped}
-      />
-    </mesh>
+    <group position={position} frustumCulled={false}>
+      {/* FRONT LAYER (+Z) */}
+      <mesh geometry={geo} rotation={[0, 0, 0]} frustumCulled={false}>
+        <shaderMaterial
+          ref={frontMat}
+          vertexShader={vertexShader}
+          fragmentShader={fragmentShader}
+          uniforms={THREE.UniformsUtils.clone(baseUniforms)}
+          transparent
+          depthWrite={true} // makes things behind itself
+          depthTest
+          side={THREE.FrontSide}
+          blending={blendingMode}
+          toneMapped={TUNE.toneMapped}
+        />
+      </mesh>
+
+      {/* BACK LAYER (–Z) */}
+      <mesh geometry={geo} rotation={[0, 0, 0]} frustumCulled={false}>
+        <shaderMaterial
+          ref={backMat}
+          vertexShader={vertexShader}
+          fragmentShader={fragmentShader}
+          uniforms={THREE.UniformsUtils.clone(baseUniforms)}
+          transparent
+          depthWrite={false}
+          depthTest
+          side={THREE.BackSide}
+          blending={blendingMode}
+          toneMapped={TUNE.toneMapped}
+        />
+      </mesh>
+    </group>
   );
-}
+});
+
+export default PortalSurface;

@@ -18,7 +18,7 @@ export default function DottedText({
   dotScale = 3.0,
   dotSize = 1.2,
   fillBg = false,
-  color = "#ffffff",
+  color = "#000000",
   ...textProps
 }) {
   const matRef = useRef();
