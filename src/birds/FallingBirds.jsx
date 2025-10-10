@@ -1,6 +1,6 @@
 // details/FallingBirds.jsx
 import { useGLTF, useAnimations } from "@react-three/drei";
-import { useFrame } from "@react-three/fiber";
+import { useFrame, useLoader } from "@react-three/fiber";
 import { SkeletonUtils } from "three-stdlib";
 import * as THREE from "three";
 import { useRef, useMemo, useEffect } from "react";
@@ -10,7 +10,9 @@ function AnimatedBird({
   animations,
   pos,
   scroll,
+  matcap,
   enableAnimation = true,
+  targetMeshNames = ["plane005", "plane.005"], // names to receive the matcap
 }) {
   // Deep clone to preserve skeleton/skin
   const clone = useMemo(() => SkeletonUtils.clone(baseScene), [baseScene]);
@@ -24,16 +26,24 @@ function AnimatedBird({
     a?.reset().setLoop(THREE.LoopRepeat, Infinity).play();
   }, [actions, names, enableAnimation]);
 
-  // mesh flags once
+  // Mesh flags + override material ONLY for specific target meshes
   useEffect(() => {
+    const targets = targetMeshNames.map((s) => s.toLowerCase());
     clone.traverse((child) => {
       if (child.isMesh) {
         child.castShadow = true;
         child.receiveShadow = false;
         child.frustumCulled = false;
+
+        const name = (child.name || "").toLowerCase();
+        const shouldMatcap = targets.some((t) => name.includes(t));
+        if (shouldMatcap) {
+          child.material = new THREE.MeshMatcapMaterial({ matcap });
+        }
+        // Else: keep the original material as-is
       }
     });
-  }, [clone]);
+  }, [clone, matcap, targetMeshNames]);
 
   useFrame(() => {
     // falling logic (kept from your version)
@@ -65,9 +75,12 @@ export default function FallingBirds({ scroll }) {
     "/models/birdWithGlasses.glb"
   );
 
-  // Preload both to avoid pop-in
+  // Load matcap texture
+  const matcap = useLoader(THREE.TextureLoader, "/matcaps/1.png");
+
+  // Preload both models to avoid pop-in
   useGLTF.preload("/models/hummingbird.glb");
-  useGLTF.preload("/models/bardWithGlasses.glb");
+  useGLTF.preload("/models/birdWithGlasses.glb");
 
   // Positions (same 5x6 grid; includes row/col for picking the model)
   const birds = useMemo(() => {
@@ -91,10 +104,6 @@ export default function FallingBirds({ scroll }) {
         const baseScene = isFirstRow ? firstRowScene : defaultScene;
         const animations = isFirstRow ? firstRowAnims : defaultAnims;
 
-        // If the glasses model has no anims, enableAnimation can be false;
-        // leaving true is fine if it has at least one track.
-        const enableAnimation = true;
-
         return (
           <AnimatedBird
             key={pos.key}
@@ -102,7 +111,9 @@ export default function FallingBirds({ scroll }) {
             animations={animations}
             pos={pos}
             scroll={scroll}
-            enableAnimation={enableAnimation}
+            matcap={matcap}
+            // Add/remove aliases here if your mesh name differs
+            targetMeshNames={["plane005", "plane.005"]}
           />
         );
       })}

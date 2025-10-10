@@ -1,6 +1,7 @@
 import { useTheme } from "./BirdThemes";
 import "../css/ThemePicker.css";
 import { useLanguage } from "./LanguageProvider";
+import Randomize from "/imgs/Randomize.svg";
 
 export default function ThemePicker() {
   const {
@@ -64,7 +65,7 @@ export default function ThemePicker() {
 
       {/* Randomize */}
       <button type="button" onClick={randomize} className="themePicker-random">
-        {t("randomize")}
+        {t("randomize")} &nbsp; <img src={Randomize} />
       </button>
     </div>
   );

@@ -10,18 +10,20 @@ const shapes = [
 ];
 
 const isMobile = window.innerWidth < 768;
-const cellSize = isMobile ? 180 : 250; // 150 + 20
+const cellWidth = isMobile ? 180 : 300; // horizontal spacing
+const cellHeight = isMobile ? 180 : 170; // vertical spacing
+
 const gridSize = 2;
 
-const marginLeft = isMobile ? 50 : 170;
-const marginTop = isMobile ? 80 : 70;
+const marginLeft = isMobile ? 50 : 140;
+const marginTop = isMobile ? 80 : 300;
 
 const holePositions = [];
 for (let row = 0; row < gridSize; row++) {
   for (let col = 0; col < gridSize; col++) {
     holePositions.push({
-      left: `${marginLeft + col * cellSize}px`,
-      top: `${marginTop + row * cellSize}px`,
+      left: `${marginLeft + col * cellWidth}px`,
+      top: `${marginTop + row * cellHeight}px`,
     });
   }
 }
@@ -84,6 +86,10 @@ const ShapeMatchingGame = ({ onWin, onDragStart }) => {
 
   return (
     <div className="shapeGameContainer">
+      <div className="marquee">
+        <span>TIRER LE BOUTON EN BAS SUR LA BONNE CASE</span>
+        <span>TIRER LE BOUTON EN BAS SUR LA BONNE CASE</span>
+      </div>
       {shapes.map((shape, index) => {
         const pos = holeLayout[index];
         if (!pos) return null;

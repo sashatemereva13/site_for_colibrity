@@ -2,28 +2,39 @@
 import * as THREE from "three";
 import { useEffect, useMemo, useRef } from "react";
 import { useGLTF, useTexture } from "@react-three/drei";
+import { useFrame } from "@react-three/fiber";
 
 export default function TVScreen({
   isMobile,
   tvRef,
 
-  // desktop model stays your default
   modelUrl = "/models/TV.glb",
-  // add a mobile override
   mobileModelUrl = "/models/iPhoneGame.glb",
 
   screenById = null,
   activeId = null,
   screenTextureUrl = null,
-  descriptionMatName = "Description",
-}) {
-  // ⬇️ choose model by device (everything else unchanged)
-  const selectedModelUrl = isMobile ? mobileModelUrl : modelUrl;
 
+  descriptionMatName = ["Description", "Game"],
+
+  // new props
+  fitMode = "contain", // "cover" | "contain" | "stretch"
+  align = "center", // "center" | "top" | "bottom" | "left" | "right"
+  zoom, // >1 zoom in, <1 zoom out
+}) {
+  const selectedModelUrl = isMobile ? mobileModelUrl : modelUrl;
   const { scene } = useGLTF(selectedModelUrl);
   const tv = useMemo(() => scene.clone(true), [scene]);
+  const levitateRef = useRef();
 
-  // --- choose texture (unchanged) ---
+  useFrame((state) => {
+    if (levitateRef.current) {
+      const t = state.clock.getElapsedTime();
+      levitateRef.current.position.y = Math.sin(t * 1.5) * 0.09;
+    }
+  });
+
+  // --- pick texture based on activeId ---
   const ids = useMemo(
     () => (screenById ? Object.keys(screenById) : []),
     [screenById]
@@ -61,26 +72,13 @@ export default function TVScreen({
 
   const targetsRef = useRef([]);
 
-  function makeChecker(n = 10) {
-    const s = 256,
-      c = document.createElement("canvas");
-    c.width = c.height = s;
-    const g = c.getContext("2d"),
-      w = s / n;
-    for (let y = 0; y < n; y++)
-      for (let x = 0; x < n; x++) {
-        g.fillStyle = (x + y) % 2 ? "#fff" : "#000";
-        g.fillRect(x * w, y * w, w, w);
-      }
-    const t = new THREE.CanvasTexture(c);
-    t.colorSpace = THREE.SRGBColorSpace;
-    t.minFilter = THREE.LinearFilter;
-    t.magFilter = THREE.LinearFilter;
-    t.wrapS = t.wrapT = THREE.RepeatWrapping;
-    return t;
-  }
-
-  function fitTextureToGeom(map, geom, mode = "cover") {
+  function fitTextureToGeom(
+    map,
+    geom,
+    mode = "cover",
+    align = "center",
+    zoom = 1
+  ) {
     if (!map || !geom) return;
     geom.computeBoundingBox();
     const size = new THREE.Vector3();
@@ -91,10 +89,13 @@ export default function TVScreen({
     if (!img) return;
     const texAspect = img.width / img.height;
 
-    map.center.set(0.5, 0.5);
+    map.center.set(-5.7, 0);
+
     let sx = 1,
       sy = 1;
-    if (mode === "cover") {
+    if (mode === "stretch") {
+      sx = sy = 1;
+    } else if (mode === "cover") {
       if (texAspect > geomAspect) {
         sx = geomAspect / texAspect;
         sy = 1;
@@ -103,6 +104,7 @@ export default function TVScreen({
         sy = texAspect / geomAspect;
       }
     } else {
+      // contain
       if (texAspect > geomAspect) {
         sx = 1;
         sy = texAspect / geomAspect;
@@ -111,11 +113,26 @@ export default function TVScreen({
         sy = 1;
       }
     }
+
+    // apply zoom
+    sx /= zoom;
+    sy /= zoom;
+
     map.repeat.set(sx, sy);
-    map.offset.set((1 - sx) / 2, (1 - sy) / 2);
+
+    let ox = (1 - sx) / 2;
+    let oy = (1 - sy) / 2;
+
+    if (align.includes("left")) ox = 0;
+    if (align.includes("right")) ox = 1 - sx;
+    if (align.includes("top")) oy = 1 - sy;
+    if (align.includes("bottom")) oy = 0;
+
+    map.offset.set(ox, oy);
     map.needsUpdate = true;
   }
 
+  // swap out materials with MeshBasicMaterial
   useEffect(() => {
     targetsRef.current = [];
     tv.traverse((obj) => {
@@ -146,55 +163,33 @@ export default function TVScreen({
     });
   }, [tv, targetNames, descriptionMatName, tex]);
 
+  // apply texture fitting
   useEffect(() => {
-    tv.traverse((obj) => {
-      if (!obj.isMesh) return;
-      const mats = Array.isArray(obj.material) ? obj.material : [obj.material];
-      mats.forEach((m) => {
-        if (!m) return;
-        const name = (m.name || "").toLowerCase();
-        if (["button", "description", "game"].includes(name)) {
-          const geom = obj.geometry;
-          geom.computeBoundingBox();
-          geom.computeBoundingSphere();
-        }
-      });
-    });
-  }, [tv]);
-
-  useEffect(() => {
-    const img = tex?.image || null;
-    const fallback = makeChecker(12);
+    if (!tex) return;
     targetsRef.current.forEach(({ mat, obj }) => {
-      const hasUV = !!obj.geometry.attributes.uv;
-      const map = img && hasUV ? tex : fallback;
-      map.colorSpace = THREE.SRGBColorSpace;
-      map.minFilter = THREE.LinearFilter;
-      map.magFilter = THREE.LinearFilter;
-      map.wrapS = map.wrapT = THREE.RepeatWrapping;
-      fitTextureToGeom(map, obj.geometry, "cover");
+      fitTextureToGeom(tex, obj.geometry, fitMode, align, zoom);
       if (mat.color && mat.color.isColor) mat.color.set("#ffffff");
-      mat.map = map;
+      mat.map = tex;
       mat.needsUpdate = true;
     });
-  }, [tex, activeId]);
+  }, [tex, activeId, fitMode, align, zoom]);
 
-  const scale = isMobile ? 1 : 2;
+  const scale = 1;
 
   return (
     <group
       ref={tvRef}
-      position={[0, 0, -10]}
+      position={[0, 1, -10]}
       scale={scale}
-      rotation={[0, Math.PI, 0]}
+      rotation={[0, 0, 0]}
       dispose={null}
     >
-      {/* key ensures re-mount when switching modelUrl */}
-      <primitive object={tv} key={selectedModelUrl} />
+      <group ref={levitateRef}>
+        <primitive object={tv} key={selectedModelUrl} />
+      </group>
     </group>
   );
 }
 
-// Preload both models so switching is instant
 useGLTF.preload("/models/TV.glb");
 useGLTF.preload("/models/iPhoneGame.glb");

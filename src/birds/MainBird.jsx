@@ -3,8 +3,8 @@ import { forwardRef, useImperativeHandle, useRef } from "react";
 import * as THREE from "three";
 import { useEffect } from "react";
 import Bird from "./Bird";
-import Laptop from "./Laptops/Laptop";
-import TableSingular from "./Tables/TableSingular";
+import Laptop from "../scene1elements/Laptops/Laptop";
+import TableSingular from "../scene1elements/Room/Tables/TableSingular";
 
 const MainBird = forwardRef(({ scroll, mainBirdLaptopsOn = false }, ref) => {
   const mainBirdRef = useRef();
@@ -70,13 +70,13 @@ const MainBird = forwardRef(({ scroll, mainBirdLaptopsOn = false }, ref) => {
     <>
       <Laptop
         poweredOn={mainBirdLaptopsOn}
-        position={[0.6, 0.75, 7.4]}
+        position={[0.6, 0.85, 7.4]}
         src="/TV/TV_Design.mp4"
       />
 
       <Bird ref={mainBirdRef} />
 
-      <TableSingular position={[-1.2, -0.1, 1.6]} />
+      <TableSingular position={[-1.2, 0, 1.6]} />
     </>
   );
 });

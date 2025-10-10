@@ -3,12 +3,15 @@ import { useRef, useState, useEffect, useMemo, createRef } from "react";
 import { useFrame, useThree } from "@react-three/fiber";
 import { Cloud } from "@react-three/drei";
 import * as THREE from "three";
+import { LanguageProvider, useLanguage } from "../allScenes/LanguageProvider";
 
 import Scene2Scroll from "./Scene2Scroll";
 import Logo from "../secondScroll/Logo";
 import Inspire from "../secondScroll/Inspire";
 import BackGarden from "../secondScroll/BackGarden";
 import MouseTrail from "../secondScroll/MouseTrail";
+import { EffectComposer, GodRays } from "@react-three/postprocessing";
+import CloudsCeiling from "../scene1elements/Room/CloudsCelling";
 
 export default function Scene2({
   persistentBirdRef,
@@ -18,11 +21,12 @@ export default function Scene2({
 }) {
   const isMobile = window.innerWidth < 768;
   const { camera, size, gl } = useThree();
+  const { t } = useLanguage();
 
   // messages for Inspire nodes (left commented for now)
   const messages = useMemo(
-    () => ["Ecommerce", "Site Vitrine", "Configurateur", "Site Immersif"],
-    []
+    () => [t("message1"), t("message2"), t("message3"), t("message4")],
+    [t]
   );
 
   const phraseRefs = useMemo(
@@ -54,6 +58,9 @@ export default function Scene2({
 
   const logo = useRef();
   const scrollRef = useRef(0);
+
+  const sunRef = useRef();
+  const [sunNode, setSunNode] = useState(null);
 
   // --- ensure the persistent bird is visible when Scene2 mounts
   useEffect(() => {
@@ -137,19 +144,35 @@ export default function Scene2({
 
       {/* lights */}
       <ambientLight intensity={0.6} />
-      <directionalLight
-        position={[3, 6, 5]}
-        intensity={1}
-        castShadow
-        shadow-mapSize-width={2048}
-        shadow-mapSize-height={2048}
-        shadow-camera-near={1}
-        shadow-camera-far={30}
-        shadow-camera-left={-12}
-        shadow-camera-right={12}
-        shadow-camera-top={12}
-        shadow-camera-bottom={-12}
-      />
+      <directionalLight position={[3, 6, 5]} intensity={1} />
+
+      {/* Sun at the end of the scroll */}
+      <mesh ref={sunRef} position={[0, 20, 0]}>
+        <sphereGeometry args={[3, 64, 64]} />
+        <meshBasicMaterial color={"#fff7d6"} />
+      </mesh>
+
+      {/* the sky */}
+      <mesh scale={500}>
+        <sphereGeometry args={[1, 32, 32]} />
+        <meshBasicMaterial side={THREE.BackSide} color={"#87CEEB"} />
+      </mesh>
+
+      <CloudsCeiling y={-3} radius={10} count={10} scale={1} />
+
+      <EffectComposer>
+        {sunRef.current && (
+          <GodRays
+            sun={sunRef.current}
+            samples={60}
+            density={1.5}
+            decay={0.65}
+            weight={1.0}
+            exposure={0.9}
+            clampMax={1}
+          />
+        )}
+      </EffectComposer>
 
       {/* content */}
       <Logo ref={logo} position={[0, 0, 0]} />
@@ -166,13 +189,14 @@ export default function Scene2({
         />
       ))}
 
+      <directionalLight position={[1, 1, 21]} intensity={1} />
       <Cloud
         segments={40}
         position={[0, 0, 20]}
         seed={1}
         scale={3}
         volume={50}
-        color="#fdc2ff"
+        color="#ffffff"
         fade={50}
       />
 

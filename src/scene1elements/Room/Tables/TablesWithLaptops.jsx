@@ -1,6 +1,8 @@
 // TablesWithLaptops.jsx
+import { useRef } from "react";
+import { useFrame } from "@react-three/fiber";
 import Candy from "./Candy"; // use the external component
-import Laptop from "../Laptops/Laptop";
+import Laptop from "../../Laptops/Laptop";
 import * as THREE from "three";
 import Tables from "./Tables";
 
@@ -13,8 +15,18 @@ const ROW_SRCS = [
 ];
 
 const TablesWithLaptops = ({ laptopsOn = false }) => {
+  const groupRef = useRef();
+
+  // Animate the whole group up and down
+  useFrame((state) => {
+    const t = state.clock.getElapsedTime();
+    if (groupRef.current) {
+      groupRef.current.position.y = Math.sin(t * 1.5) * 0.05;
+    }
+  });
+
   return (
-    <>
+    <group ref={groupRef}>
       <Tables />
       {[...Array(5)].map((_, row) =>
         [...Array(6)].map((_, col) => {
@@ -24,28 +36,7 @@ const TablesWithLaptops = ({ laptopsOn = false }) => {
 
           return (
             <group key={`${row}-${col}`}>
-              {/* table leg */}
-              {/* <mesh castShadow position={[x, 0.5, z]}>
-                <cylinderGeometry args={[0.15, 0.2, 0.7]} />
-                <meshPhysicalMaterial
-                  color="#e2a9be"
-                  roughness={0.8}
-                  metalness={0.1}
-                />
-              </mesh> */}
-
-              {/* tabletop */}
-              {/* <mesh castShadow position={[x, 0.85, z]}>
-                <cylinderGeometry args={[0.4, 0.4, 0.01]} />
-                <meshStandardMaterial
-                  color="#e087cd"
-                  roughness={0.8}
-                  metalness={0.1}
-                />
-              </mesh> */}
-
-              {/* laptop */}
-              <Laptop position={[x, 0.66, z]} src={src} poweredOn={laptopsOn} />
+              <Laptop position={[x, 0.85, z]} src={src} poweredOn={laptopsOn} />
 
               {/* row 0: animated candy above laptop */}
               {row === 0 && (
@@ -62,7 +53,7 @@ const TablesWithLaptops = ({ laptopsOn = false }) => {
           );
         })
       )}
-    </>
+    </group>
   );
 };
 

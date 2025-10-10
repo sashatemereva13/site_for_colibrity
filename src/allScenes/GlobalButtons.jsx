@@ -1,6 +1,11 @@
 import React, { useState } from "react";
 import "../css/GlobalButtons.css";
 import { useLanguage } from "./LanguageProvider";
+import BackArrow from "/imgs/BackArrow.svg";
+import SingingBird from "/imgs/SingingBird.svg";
+import SilentBird from "/imgs/SilentBird.svg";
+import SittingBurd from "/imgs/SittingBird.svg";
+import SettingsIcon from "/imgs/Settings.svg";
 
 export default function GlobalButtons({
   withSound,
@@ -18,20 +23,43 @@ export default function GlobalButtons({
 
   return (
     <div className="globalButtonsDiv">
-      <button className="globalButton" onClick={onToggleSound}>
-        {withSound ? t("soundOn") : t("soundOff")}
+      <button
+        className="globalButton soundToggle"
+        onClick={onToggleSound}
+        aria-label={withSound ? "Sound on" : "Sound off"}
+        title={withSound ? "Sound on" : "Sound off"}
+      >
+        <span className="iconWrap">
+          {withSound ? <img src={SingingBird} /> : <img src={SilentBird} />}
+
+          <span
+            className={`eqBars ${withSound ? "playing" : ""}`}
+            aria-hidden="true"
+          >
+            <span className="bar" />
+            <span className="bar" />
+            <span className="bar" />
+            <span className="bar" />
+            <span className="bar" />
+          </span>
+        </span>
       </button>
 
       <button className="globalButton" onClick={onCycleLanguage}>
-        {language.toUpperCase()}
+        {language === "brd" ? (
+          <img src={SittingBurd} alt="bird" />
+        ) : (
+          language.toUpperCase()
+        )}
       </button>
 
       <button className="globalButton" onClick={onToggleTheme}>
-        {t("birdColor")}
+        <img src={SettingsIcon} /> &nbsp; {t("birdColor")}
       </button>
 
       <button className="globalButton" onClick={() => setShowConfirm(true)}>
-        {t("goBack")}
+        <img src={BackArrow} />
+        &nbsp; {t("goBack")}
       </button>
 
       {/* Confirmation Modal */}
@@ -41,13 +69,13 @@ export default function GlobalButtons({
             <p>{t("alert")}</p>
             <div className="confirmActions">
               <button onClick={handleConfirm} className="confirmYes">
-               {t("alertYes")}
+                {t("alertYes")}
               </button>
               <button
                 onClick={() => setShowConfirm(false)}
                 className="confirmNo"
               >
-            {t("alertNo")}
+                {t("alertNo")}
               </button>
             </div>
           </div>

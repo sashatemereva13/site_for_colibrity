@@ -7,11 +7,13 @@ const SUPPORTED = ["en", "fr", "brd"];
 const STRINGS = {
   en: {
     // welcome overlay
-    welcomeTitle: "welcome to the experience",
-    welcomeSubtitle: "choose how you'd like to enter",
-    withSound: "with sound",
-    noSound: "no sound",
-    tip: "tip: you can toggle the sound later",
+    welcomeTitle: "Welcome to the experience",
+    welcomeSubtitle: "Choose how you'd like to enter",
+
+    withSound: "With sound",
+    noSound: "No sound",
+
+    tip: "Tip: you can toggle the sound later",
     scrollTip: "scroll to join me",
     soundOn: "Sound: On",
     soundOff: "Sound: Off",
@@ -28,13 +30,16 @@ const STRINGS = {
     portalEntrance: "30+ in the team \n Enter the Colibrity office",
 
     // TV GAME
-    up: "fly up!",
     TVdesign: "/TVpics/en/design.png",
     TVdevelopment: "/TVpics/en/development.png",
     TVinnovation: "/TVpics/en/innovation.png",
     TVmarketing: "/TVpics/en/marketing.png",
     TVexit: "/TVpics/en/exit.png",
     TVentrance: "/TVpics/en/entrance.png",
+
+    // TV BUTTON
+    up: "fly up!",
+    startButton: "C'EST PARTI!",
 
     // theme picker
     birdLook: "Bird Look",
@@ -43,13 +48,22 @@ const STRINGS = {
       "Changes the bird’s body surface feel (metallic, ceramic, glossy…)",
     color: "Accent color",
     colorHelp: "Colors for beak, eyes & feet",
-    randomize: "Randomize ✨",
+    randomize: "Randomize",
+
+    // LOGO
+    logoComment: "creator of high-end, custom-made, turnkey websites",
+    message1: "Ecommerce",
+    message2: "Showcase Website",
+    message3: "Configurator",
+    message4: "Immersive website",
   },
   fr: {
     welcomeTitle: "bienvenue dans l’expérience",
     welcomeSubtitle: "choisissez comment vous souhaitez entrer",
-    withSound: "avec son",
-    noSound: "sans son",
+
+    withSound: "Avec son",
+    noSound: "Sans son",
+
     tip: "astuce : vous pourrez activer/désactiver le son plus tard",
     scrollTip: "défilez pour me rejoindre",
     soundOn: "Son : Activé",
@@ -67,13 +81,16 @@ const STRINGS = {
     portalEntrance: "30+ dans l'équipe \n Entrer chez Colibrity",
 
     // TV game button
-    up: "monte en volant",
     TVdesign: "/TVpics/en/design.png",
     TVdevelopment: "/TVpics/en/development.png",
     TVinnovation: "/TVpics/en/innovation.png",
     TVmarketing: "/TVpics/en/marketing.png",
     TVexit: "/TVpics/en/exit.png",
     TVentrance: "/TVpics/en/entrance.png",
+
+    // TV BUTTON
+    up: "monte en volant",
+    startButton: "Start the game",
 
     // theme picker
     birdLook: "Apparence de l’Oiseau",
@@ -82,13 +99,23 @@ const STRINGS = {
       "Change la texture de surface du corps de l’oiseau (métallique, céramique, brillant…)",
     color: "Couleur d’Accent",
     colorHelp: "Couleurs pour le bec, les yeux et les pattes",
-    randomize: "Aléatoire ✨",
+    randomize: "Aléatoire",
+
+    // LOGO
+    logoComment:
+      "créateur de sites internet haut de gamme, sur mesure et clés en main",
+    message1: "Ecommerce",
+    message2: "Site Vitrine",
+    message3: "Configurateur",
+    message4: "Site Immersif",
   },
   brd: {
     welcomeTitle: "cui-cui trrr-trrr piouuu",
     welcomeSubtitle: "tchip-tchip cui-cui piou",
-    withSound: "cui-cui avec trrr",
-    noSound: "piou-piou sans trrr",
+
+    withSound: "cui-cui",
+    noSound: "trrr-trrr",
+
     tip: "tchip : cui-cui plus tard trrr piou",
     scrollTip: "frrrt-piouu défile-cui vers moi",
     soundOn: "Son: Activé",
@@ -101,13 +128,13 @@ const STRINGS = {
     alertNo: "Annuler",
 
     // corridor portals
-    portalAgencyBase: "Cui-brd-city trrr-diji-tale nidé à Pa-piou",
+    portalAgencyBase: "Colibrity \n trrr-diji-tale nidé à Pa-piou",
     portalSince2018: "Tchi-tchi depuis deu-mille-dix-huit",
     portalEntrance:
       "piou-piou 30+ dans l’es-nui \n Entr’-piou chez Coli-brd-city",
 
     // TV game button
-    up: "flutter-soar skyward!",
+
     TVdesign: "/TVpics/en/design.png",
     TVdevelopment: "/TVpics/en/development.png",
     TVinnovation: "/TVpics/en/innovation.png",
@@ -115,13 +142,25 @@ const STRINGS = {
     TVexit: "/TVpics/en/exit.png",
     TVentrance: "/TVpics/en/entrance.png",
 
+    // TV button
+    up: "flutter-soar skyward!",
+    startButton: "pattes-piou",
+
     // theme picker
     birdLook: "cui-cui look piou-piou",
     bodyMat: "trrr-trrr mat piou",
     bodyMatHelp: "cui-cui change surface piou (métal, trrr, glossy-piou)",
     color: "tchip-tchip color piou",
     colorHelp: "piou bec-cui yeux-trrr pattes-piou",
-    randomize: "trrr-piou aléa-cui ✨",
+    randomize: "trrr-piou",
+
+    // LOGO
+    logoComment:
+      "cui-cui créa-trrr piou-piou site-plum haut-de-cui, sur-mesure trrr",
+    message1: "piou-piou",
+    message2: "yeux-trr",
+    message3: "trrr-diji-tale",
+    message4: "tchip-tchip cui-cui",
   },
 };
 

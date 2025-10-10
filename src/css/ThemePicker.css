@@ -13,7 +13,7 @@
   width: 280px;
   padding: 14px;
   border-radius: 14px;
-  background: rgba(18, 18, 18, 0.75);
+  background: rgba(255, 255, 255, 0.05);
   backdrop-filter: blur(10px);
   -webkit-backdrop-filter: blur(10px);
   border: 1px solid rgba(255, 255, 255, 0.08);
@@ -133,13 +133,18 @@
 
 /* --- RANDOMIZE BUTTON --- */
 .themePicker-random {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: center;
+
   margin-top: 12px;
   width: 100%;
   border-radius: 10px;
   padding: 10px 12px;
-  background: linear-gradient(180deg, #ffffff, #eaeaea);
-  color: #0a0a0a;
-  border: none;
+  background: none;
+  color: #ffffff;
+  border: 1px solid white;
   cursor: pointer;
   font-weight: 700;
   font-size: 13px;

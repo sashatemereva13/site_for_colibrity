@@ -26,12 +26,12 @@ export default function StaticCloud({
   return (
     <group position={pos} visible={visible}>
       <Cloud
-        segments={60}
+        segments={100}
         ref={cloudRef}
         position={[0, 0, 0]}
         scale={scale}
         volume={volume}
-        color="#fdc2ff"
+        color="#ffffff"
         opacity={opacity} // initial; material is set in effect too
         fade={fade}
         frustumCulled={false}

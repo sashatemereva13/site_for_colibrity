@@ -1,8 +1,10 @@
 import { Text } from "@react-three/drei";
 import { forwardRef, useRef } from "react";
+import { useLanguage } from "../allScenes/LanguageProvider";
 
 const Logo = forwardRef((props, ref) => {
   const isMobile = window.innerWidth < 768;
+  const { t } = useLanguage();
 
   return (
     <>
@@ -27,7 +29,7 @@ const Logo = forwardRef((props, ref) => {
           letterSpacing={0}
           toneMapped={false} // keep pure white
         >
-          créateur de sites internet haut de gamme, sur mesure et clés en main
+          {t("logoComment")}
         </Text>
       </group>
     </>

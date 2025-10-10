@@ -3,13 +3,13 @@ import React, { useMemo } from "react";
 import { useGLTF } from "@react-three/drei";
 import * as THREE from "three";
 
-export default function Tables({
-  position = [0, -0.2, 0],
+export default function TableSingular({
+  position = [0, -1, 0],
   rotation = [0, 0, 0],
   scale = 1,
 }) {
   // Load the GLB model
-  const { scene } = useGLTF("/models/tables.glb");
+  const { scene } = useGLTF("/models/TableSingular.glb");
 
   // Clone once to avoid modifying the original scene
   const clone = useMemo(() => {
@@ -37,4 +37,4 @@ export default function Tables({
 }
 
 // Preload model for faster loading
-useGLTF.preload("/models/tables.glb");
+useGLTF.preload("/models/TableSingular.glb");

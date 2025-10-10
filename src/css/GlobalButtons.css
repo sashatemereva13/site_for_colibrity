@@ -8,13 +8,41 @@
   pointer-events: auto;
 }
 .globalButton {
-  padding: 10px 12px;
-  border-radius: 10px;
-  border: 0.1px solid rgba(255, 255, 255, 0.8);
-  background: transparent;
-  color: #ffffff;
-  backdrop-filter: blur(8px);
+  display: flex;
+  flex-direction: row;
+  justify-content: center;
+  align-items: center;
+
   cursor: pointer;
+  border: none;
+  border-radius: 10px;
+  padding: 0.5rem 1.2rem 0.5rem 1rem;
+  font-size: 0.95rem;
+  font-weight: 500;
+  color: #fff;
+
+  /* Glassy background */
+  background: rgba(0, 0, 0, 0.1);
+  backdrop-filter: blur(12px) saturate(180%);
+  -webkit-backdrop-filter: blur(12px) saturate(180%);
+
+  /* Borders and highlights */
+  border: 1.5px solid rgba(255, 255, 255, 0.95);
+  box-shadow: inset 0 1px 4px rgba(255, 255, 255, 0.11),
+    inset 0 -2px 6px rgba(0, 0, 0, 0.15), 0 4px 20px rgba(0, 0, 0, 0.01);
+
+  transition: transform 0.15s ease, background 0.3s ease, box-shadow 0.3s ease;
+}
+
+.globalButton:hover {
+  background: rgba(255, 255, 255, 0.15);
+  box-shadow: inset 0 1px 6px rgba(255, 255, 255, 0.2),
+    inset 0 -2px 8px rgba(0, 0, 0, 0.3), 0 6px 25px rgba(0, 0, 0, 0.45);
+  transform: scale(1.05);
+}
+
+.globalButton:active {
+  transform: translateY(1px);
 }
 
 .confirmOverlay {
@@ -79,4 +107,83 @@
 .confirmYes:hover,
 .confirmNo:hover {
   transform: translateY(-1px);
+}
+
+.globalButton.soundToggle .iconWrap {
+  display: flex;
+  flex-direction: row;
+  justify-content: center;
+  gap: 0.5rem;
+  align-items: center;
+}
+
+.globalButton.soundToggle .eqBars {
+  display: inline-flex;
+  gap: 2px;
+  height: 12px;
+  width: auto;
+  opacity: 0.85;
+  pointer-events: none;
+}
+
+.globalButton.soundToggle .eqBars .bar {
+  width: 2px;
+  heigth: 40%;
+  background: #fff;
+  border-radius: 1px;
+  transform-origin: center center;
+  animation: none;
+  opacity: 0.7;
+}
+
+.globalButton.soundToggle .eqBars.playing .bar {
+  animation: eqBounce 900ms ease-in-out infinite;
+  opacity: 1;
+}
+
+.globalButton.soundToggle .eqBars.playing .bar:nth-child(1) {
+  animation-delay: 0ms;
+}
+.globalButton.soundToggle .eqBars.playing .bar:nth-child(2) {
+  animation-delay: 120ms;
+}
+.globalButton.soundToggle .eqBars.playing .bar:nth-child(3) {
+  animation-delay: 240ms;
+}
+.globalButton.soundToggle .eqBars.playing .bar:nth-child(4) {
+  animation-delay: 360ms;
+}
+.globalButton.soundToggle .eqBars.playing .bar:nth-child(5) {
+  animation-delay: 480ms;
+}
+
+@keyframes eqBounce {
+  0% {
+    transform: scaleY(0.45);
+  }
+  20% {
+    transform: scaleY(1);
+  }
+  40% {
+    transform: scaleY(0.6);
+  }
+  60% {
+    transform: scaleY(0.9);
+  }
+  80% {
+    transform: scaleY(0.5);
+  }
+  100% {
+    transform: scaleY(0.8);
+  }
+}
+
+.globalButton.soundToggle:not(:has(.eqBars.playing)) .eqBars .bar {
+  opacity: 0.5;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .globalButton.soundToggle .eqBars.playing .bar {
+    animation: none;
+  }
 }

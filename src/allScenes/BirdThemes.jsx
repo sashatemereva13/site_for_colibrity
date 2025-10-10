@@ -30,7 +30,7 @@ export const MATCAPS = [
 ];
 
 const TINTS = [
-  "#FFFFFF",
+  "#FFF4EF",
   "#F5E6FF",
   "#E0C3FC",
   "#C6E7FF",

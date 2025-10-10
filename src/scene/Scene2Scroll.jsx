@@ -176,7 +176,7 @@ export default function Scene2Scroll({
 
     // background gradient
     const bgColor = new THREE.Color();
-    const pink = new THREE.Color("#ff9cf7");
+    const pink = new THREE.Color("#ffffff");
     const black = new THREE.Color("#000000");
     const bkbk = THREE.MathUtils.smoothstep(t, 0.8, 1);
     bgColor.lerpColors(black, pink, bkbk);

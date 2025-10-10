@@ -4,27 +4,30 @@ import { useScroll } from "@react-three/drei";
 import { useState, useRef, useMemo } from "react";
 import { useEffect } from "react";
 import * as THREE from "three";
-import WinBird from "../sceneSwitch/WinBird";
+import WinBird from "../birds/WinBird";
 import { OrbitControls } from "@react-three/drei";
 import WinBirdFollowCamera from "../utils/WinBirdFollowCamera";
 
 import { Cloud } from "@react-three/drei";
-import TVGameSlotPositioner from "../utils/TVGamePositioner";
+import TVGameSlotPositioner from "../utils/TVGameSlotPositioner";
 import { ExportGLB } from "../utils/ExportGLB";
 
-import FallingBirds from "../scene1elements/FallingBirds";
-import MainBird from "../scene1elements/MainBird";
+import FallingBirds from "../birds/FallingBirds";
+import MainBird from "../birds/MainBird";
 import Corridor from "../scene1elements/Corridor/Corridor";
-import Room from "../scene1elements/Room";
+import Room from "../scene1elements/Room/Room";
 import DebugCurves from "../utils/DebugCurves";
-import TVScreen from "../scene1elements/TVScreen";
-import TablesWithLaptops from "../scene1elements/Tables/TablesWithLaptops";
-import StaticCloud from "../scene1elements/StaticCloud";
+import TVScreen from "../scene1elements/Room/TVScreen";
+import TablesWithLaptops from "../scene1elements/Room/Tables/TablesWithLaptops";
+import StaticCloud from "../scene1elements/Room/StaticCloud";
+import StartButton from "../game2D/StartButton";
+import CloudsCeiling from "../scene1elements/Room/CloudsCelling";
 
 export default function Scene1({
   onGameTrigger,
   gameWon,
-
+  onTVSlotsChange,
+  showTVSlots,
   onWinBirdExit,
   persistentBirdRef,
   tvActiveId,
@@ -36,12 +39,17 @@ export default function Scene1({
   setProceed,
 }) {
   const isMobile = window.innerWidth < 768;
-
+  const groupForExportRef = useRef();
   // curve debugging
   const [showDebug, setShowDebug] = useState(true);
   useEffect(() => {
     const onKey = (e) => {
       if (e.key.toLowerCase() === "d") setShowDebug((v) => !v);
+      if (!groupRef.current) return;
+
+      if (e.key.toLowerCase() === "s" && groupForExportRef.current) {
+        ExportGLB(groupForExportRef.current, "scene1_full.glb");
+      }
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
@@ -50,14 +58,16 @@ export default function Scene1({
   const camPosVisRef = useRef(new THREE.Vector3());
   const lookAtVisRef = useRef(new THREE.Vector3());
 
-  const [laptopsOn, setLaptopsOn] = useState(false); // <-- NEW
-  const lastPowerRef = useRef(false); // <-- NEW
+  const lastSlotsRef = useRef(false);
 
-  const [mainBirdLaptopsOn, setMainBirdLaptopsOn] = useState(false); // <-- NEW
-  const mainBirdlastPowerRef = useRef(false); // <-- NEW
+  const [laptopsOn, setLaptopsOn] = useState(false);
+  const lastPowerRef = useRef(false);
 
-  const groupRef = useRef(); // for export corridor
+  const [mainBirdLaptopsOn, setMainBirdLaptopsOn] = useState(false);
+  const mainBirdlastPowerRef = useRef(false);
 
+  const groupRef = useRef();
+  const forcedTVIdRef = useRef(null);
   const handoffDoneRef = useRef(false);
   const winBirdPhaseRef = useRef(0);
 
@@ -71,6 +81,7 @@ export default function Scene1({
   const { camera } = useThree();
   const scroll = useScroll();
   const tvRef = useRef(null);
+  const startButtonRef = useRef();
 
   // corridor bird
   const mainBirdRef = useRef(null);
@@ -78,6 +89,8 @@ export default function Scene1({
   const tmpVec3 = useRef(new THREE.Vector3());
 
   const controlsRef = useRef();
+  const wasSlotsOnRef = useRef(false);
+  const prevTVIdRef = useRef(null);
 
   // Reuse vectors (no per-frame allocations)
   const birdPos = useMemo(() => new THREE.Vector3(), []);
@@ -98,10 +111,10 @@ export default function Scene1({
   const lookAtPhase2 = useMemo(() => new THREE.Vector3(0, 0, 0), []);
   const lookAtWide = useMemo(() => new THREE.Vector3(0, 2, -3), []);
 
-  const camPosTV = useMemo(() => new THREE.Vector3(0, 3, 1), []);
-  const camLookAtTV = useMemo(() => new THREE.Vector3(0, 3.1, 0), []);
-  const tvStart = useMemo(() => new THREE.Vector3(0, 0, -3), []);
-  const tvEnd = useMemo(() => new THREE.Vector3(0, 0, -7), []);
+  const camPosTV = useMemo(() => new THREE.Vector3(0, 3.1, 1), []);
+  const camLookAtTV = useMemo(() => new THREE.Vector3(0, 3.2, 0), []);
+  const tvStart = useMemo(() => new THREE.Vector3(0, 0.3, -6), []);
+  const tvEnd = useMemo(() => new THREE.Vector3(0, 1, -10), []);
 
   const tmpTV = useMemo(() => new THREE.Vector3(), []);
 
@@ -201,6 +214,27 @@ export default function Scene1({
       cameraLockedRef.current = true;
     }
 
+    const slotsOn = t >= 9.9;
+    if (slotsOn !== lastSlotsRef.current) {
+      lastSlotsRef.current = slotsOn;
+      onTVSlotsChange?.(slotsOn);
+    }
+
+    if (!slotsOn) {
+      if (forcedTVIdRef.current !== "black") {
+        prevTVIdRef.current = tvActiveId; // remember what was showing
+        forcedTVIdRef.current = "black";
+        setActiveTVId?.("black");
+      }
+    }
+
+    // when we JUST turned ON (crossed 9.9): restore a poster once
+    if (slotsOn && !wasSlotsOnRef.current) {
+      forcedTVIdRef.current = null;
+    }
+
+    wasSlotsOnRef.current = slotsOn;
+
     if (scene1DrivesCamera) {
       if (t <= 4) {
         const beta = THREE.MathUtils.clamp((t - 2) / 2, 0, 1);
@@ -298,68 +332,62 @@ export default function Scene1({
       tmpTV.lerpVectors(tvStart, tvEnd, tvPhase);
       tvRef.current.position.lerp(tmpTV, 0.1);
     }
-
-    if (t > 9.99 && !gameTriggerRef.current) {
-      gameTriggerRef.current = true;
-      onGameTrigger?.();
-    }
   });
 
   return (
     <group ref={groupRef}>
       {/* <OrbitControls ref={controlsRef} enabled={false} /> */}
-      <ambientLight />
-      <directionalLight position={[0, 10, 5]} intensity={0.8} />
-
+      <ambientLight intensity={1.2} /> {/* boosts overall brightness */}
+      <directionalLight
+        position={[5, 15, 25]}
+        intensity={2.5} // strong sunlight
+        color="white"
+      />
       <Corridor mainBirdRef={mainBirdRef} />
+      <mesh scale={500}>
+        <sphereGeometry args={[1, 32, 32]} />
+        <meshBasicMaterial side={THREE.BackSide} color={"#87CEEB"} />
+      </mesh>
+      <group ref={groupForExportRef}>
+        <Room />
 
-      <Room />
-
-      <TVScreen
-        isMobile={isMobile}
-        tvRef={tvRef}
-        screenById={tvScreenById}
-        activeId={tvActiveId}
-      />
-
+        <TVScreen
+          isMobile={isMobile}
+          tvRef={tvRef}
+          screenById={tvScreenById}
+          activeId={tvActiveId}
+          fitMode="cover"
+          align="left"
+          zoom={0.57}
+        />
+      </group>
       <TVGameSlotPositioner
+        key={`${showGame ? "game" : "no-game"}-${gameWon ? "won" : "not-won"}`}
         tvRoot={tvRef}
-        materialName="Game"
-        screenMeshName="screen"
-        rootId="tvGameSlot"
-      />
-
-      <TVGameSlotPositioner
-        tvRoot={tvRef}
-        materialName="Button"
-        screenMeshName="screen"
+        materialName="Description"
         rootId="tvButtonSlot"
       />
-
+      {showTVSlots && (
+        <>
+          <TVGameSlotPositioner
+            tvRoot={tvRef}
+            materialName="Game"
+            rootId="tvGameSlot"
+          />
+        </>
+      )}
       <MainBird
         mainBirdLaptopsOn={mainBirdLaptopsOn}
         scroll={scroll}
         ref={mainBirdRef}
       />
-
       <FallingBirds
         scroll={scroll}
         // keep your existing prop if any (e.g., scroll={scroll})
         firstRowModelUrl="/models/birdWithGlasses.glb"
         defaultModelUrl="/models/hummingbird.glb"
       />
-
       <TablesWithLaptops laptopsOn={laptopsOn} />
-
-      {/* {showDebug && (
-        <DebugCurves
-          pathCurve={pathCurve}
-          lookAtCurve={lookAtCurve}
-          camPosRef={camPosVisRef}
-          lookAtRef={lookAtVisRef}
-        />
-      )} */}
-
       {gameWon && (
         <>
           <WinBird
@@ -392,14 +420,6 @@ export default function Scene1({
         </>
       )}
 
-      <StaticCloud
-        pos={[0, 30, -6]} // tweak X/Z to where the bird flies “into”
-        opacity={0.75}
-        scale={3}
-        volume={20}
-        visible
-        fade={60}
-      />
     </group>
   );
 }

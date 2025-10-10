@@ -13,7 +13,7 @@ import { Suspense, useEffect, useRef, useState } from "react";
 import Scene1 from "./scene/Scene1";
 import Scene2 from "./scene/Scene2";
 import ShapeMatchingGame from "./game2D/ShapeMatchingGame";
-import PersistentBird from "./sceneSwitch/PersistentBird";
+import PersistentBird from "./birds/PersistentBird";
 
 import logo from "/textures/pattern.svg";
 
@@ -25,7 +25,8 @@ import { useLanguage } from "./allScenes/LanguageProvider";
 import GlobalButtons from "./allScenes/GlobalButtons";
 import ThemePicker from "./allScenes/ThemePicker";
 import BirdDebug from "./utils/BirdDebug";
-import TVbutton from "./game2D/TVbutton";
+import WinButton from "./game2D/WinButton";
+import StartButton from "./game2D/StartButton";
 
 export default function App() {
   const isMobile = window.innerWidth < 768;
@@ -37,8 +38,9 @@ export default function App() {
 
   const [showGame, setShowGame] = useState(false);
   const [gameWon, setGameWon] = useState(false);
-  const [activeTVId, setActiveTVId] = useState(() => "entrance");
+  const [activeTVId, setActiveTVId] = useState(() => "black");
   const [proceed, setProceed] = useState(false);
+  const [showTVSlots, setShowTVSlots] = useState(false);
 
   // --- Assets to preload (fill these with your actual paths) ---
   const GLB_ASSETS = [
@@ -83,6 +85,7 @@ export default function App() {
   }
   const { t } = useLanguage();
   const tvScreenById = {
+    black: "/imgs/screenSaver.jpeg",
     design: t("TVdesign"),
     development: t("TVdevelopment"),
     innovation: t("TVinnovation"),
@@ -122,10 +125,10 @@ export default function App() {
         onCycleLanguage={cycleLanguage}
         onToggleTheme={() => setThemeOpen((o) => !o)}
       />
-
+      <div id="tvFullSlot" className="gameOverlay" />
       <Canvas
         onCreated={({ gl }) => {
-          gl.setClearColor("#000", 1); // match both scenes
+          gl.setClearColor("#000000", 1);
           gl.autoClear = false; // no automatic clear between renders
         }}
         frameloop="always"
@@ -146,6 +149,8 @@ export default function App() {
                 persistentBirdRef={birdRef}
                 onGameTrigger={() => setShowGame(true)}
                 tvActiveId={activeTVId}
+                onTVSlotsChange={setShowTVSlots}
+                showTVSlots={showTVSlots}
                 tvScreenById={tvScreenById}
                 gameWon={gameWon}
                 setGameWon={setGameWon}
@@ -173,28 +178,38 @@ export default function App() {
         </Suspense>
       </Canvas>
 
+      {showTVSlots && !showGame && !gameWon && (
+        <StartButton
+          armed={true}
+          onClick={() => {
+            setActiveTVId("entrance");
+            setShowGame(true);
+          }}
+        />
+      )}
+
       {showGame && (
         <>
           <div id="tvGameSlot" className="gameOverlay">
-            <img className="tvGameLogo" src={logo} />
             <ShapeMatchingGame
               onWin={() => {
                 setGameWon(true);
-
                 setActiveTVId("exit");
               }}
               onDragStart={(id) => setActiveTVId(id)}
             />
           </div>
-
-          <TVbutton
-            armed={gameWon}
-            onClick={() => {
-              setProceed(true);
-              setShowGame(false);
-            }}
-          />
         </>
+      )}
+
+      {showTVSlots && gameWon && (
+        <WinButton
+          armed
+          onClick={() => {
+            setProceed(true);
+            setShowGame(false);
+          }}
+        />
       )}
 
       {/* Put this once in App.jsx, typically after the Canvas */}

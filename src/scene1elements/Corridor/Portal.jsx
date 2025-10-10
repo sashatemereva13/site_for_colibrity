@@ -1,226 +1,95 @@
 // src/scene1elements/Portal.jsx
-import { forwardRef, useRef, useImperativeHandle, useEffect } from "react";
-import { useFrame, useThree } from "@react-three/fiber";
+import { forwardRef, useRef, useImperativeHandle } from "react";
+import { useFrame } from "@react-three/fiber";
+import { Text } from "@react-three/drei";
 import * as THREE from "three";
-// import ColibriParticles from "./ColibriParticles";
-import PortalSurface from "./PortalShader";
-import DottedText from "./DottedText";
-// import PortalRainParticles from "./PortalRainParticles";
-import SurfaceBurstOnBird_Geometry from "./SurfaceBurstOnBird";
+
+const smoothstep = (a, b, x) => {
+  const t = THREE.MathUtils.clamp((x - a) / (b - a), 0, 1);
+  return t * t * (3 - 2 * t);
+};
 
 const Portal = forwardRef((props, ref) => {
   const {
     position = [0, 0, 0],
     rotation = [0, 0, 0],
     label = "",
-    labelSize = 0.35,
-    labelColor = "#000000",
+    labelSize = 0.15,
+    labelColor = "#ffffff",
     fontUrl = "/fonts/NeueMachina-Black.ttf",
-    birdRef,
+    shadowColor = "#000000",
+    shadowOpacity = 0.4,
 
-    // trigger/visibility tuning
-    eps = 0.05, // distance band around portal plane
-    cooldown = 0.35, // seconds between triggers
-
-    // "keep visible for a bit" aura settings
-    idleAura = true, // turn on the idle aura
-    auraInterval = 4.5, // seconds between idle bursts
-    auraConfig = {
-      // gentle, long-lived particles
-      count: 220,
-      speed: 0.25,
-      life: 3.6,
-      size: 0.1,
-      mono: true,
-      additive: false,
-      saturation: 0.25,
-      contrast: 0.5,
-      brightness: 1.0,
-      normalPush: 0.01,
-      jitter: 0.006,
-    },
-
-    // crossing burst config (sharper/more energetic)
-    crossingBurst = {
-      count: 1600,
-      speed: 3.0,
-      life: 1.8,
-      size: 0.12,
-      mono: false,
-      additive: false,
-      saturation: 0.3,
-      contrast: 0.6,
-      brightness: 1.0,
-      normalPush: 0.02,
-      jitter: 0.01,
-    },
+    // ▶ NEW: proximity controls
+    birdRef, // ref to the main bird (forwarded from Corridor)
+    appearAt = 10, // fully visible when closer than this (meters)
+    fadeWidth = 2, // softness of fade (meters)
+    dampK = 6, // fade speed (higher = snappier)
   } = props;
 
-  const groupRef = useRef(); // portal visuals
-  const surfaceRef = useRef();
-
-  // SurfaceBurstOnBird instance — attaches to Bird group on first burst
-  const burstRef = useRef(null);
-
-  // (legacy) sampler state used by ColibriParticles; safe to remove later
-  const particlesRef = useRef(); // imperative ref for ColibriParticles (unused)
-  const samplerRootRef = useRef(new THREE.Group()); // free-floating group (unused)
-
-  const { scene } = useThree();
-
-  // Mount (legacy) samplerRoot into scene — not needed for SurfaceBurstOnBird, but harmless
-  useEffect(() => {
-    scene.add(samplerRootRef.current);
-    samplerRootRef.current.visible = false;
-    setSamplerOpacity(0);
-    return () => {
-      scene.remove(samplerRootRef.current);
-    };
-  }, [scene]);
-
+  const groupRef = useRef();
   useImperativeHandle(ref, () => groupRef.current, []);
 
-  // timing state
-  const lastTriggerAt = useRef(-1);
+  // collect text refs for quick opacity updates (no React state per frame)
+  const shadowRefs = useRef([]);
+  const mainTextRef = useRef();
 
-  // crossing scratch
-  const tmpVec = useRef(new THREE.Vector3()).current;
-  const prevZ = useRef(null);
-  const armed = useRef(false);
+  // working vars (reused to avoid GC)
+  const tmpBird = useRef(new THREE.Vector3());
+  const tmpPortal = useRef(new THREE.Vector3());
+  const alphaRef = useRef(0); // current opacity (0..1)
 
-  // helper: signed distance from bird to portal plane
-  function signedDistanceToPortalPlane(birdWorldPos) {
-    const portal = groupRef.current;
-    const portalWorldPos = new THREE.Vector3().setFromMatrixPosition(
-      portal.matrixWorld
-    );
-    const portalWorldQuat = new THREE.Quaternion().copy(
-      portal.getWorldQuaternion(new THREE.Quaternion())
-    );
-    const normal = new THREE.Vector3(0, 0, 1)
-      .applyQuaternion(portalWorldQuat)
-      .normalize();
-    const toPoint = tmpVec.copy(birdWorldPos).sub(portalWorldPos);
-    return toPoint.dot(normal); // signed distance in world units
-  }
+  useFrame((_, delta) => {
+    if (!birdRef?.current || !groupRef.current) return;
 
-  // (legacy) set opacity on all materials inside samplerRootRef
-  function setSamplerOpacity(a) {
-    const root = samplerRootRef.current;
-    if (!root) return;
-    root.traverse((o) => {
-      const m = o.material;
-      if (!m) return;
-      const mats = Array.isArray(m) ? m : [m];
-      mats.forEach((mat) => {
-        mat.transparent = true;
-        mat.depthWrite = false;
-        mat.opacity = a;
-        mat.needsUpdate = true;
-      });
-    });
-  }
+    birdRef.current.getWorldPosition(tmpBird.current);
+    groupRef.current.getWorldPosition(tmpPortal.current);
 
-  // snap legacy samplerRoot to bird pose (not required for SurfaceBurstOnBird)
-  function matchSamplerToBird() {
-    const bird = birdRef?.current;
-    const sampler = samplerRootRef.current;
-    if (!bird || !sampler) return;
+    const dist = tmpBird.current.distanceTo(tmpPortal.current);
 
-    bird.getWorldPosition(sampler.position);
-    bird.getWorldQuaternion(sampler.quaternion);
-    sampler.updateMatrixWorld(true);
-  }
+    // Target alpha rises as we approach: 0 past (appearAt + fadeWidth), 1 before (appearAt - fadeWidth)
+    const a0 = appearAt + fadeWidth;
+    const a1 = appearAt - fadeWidth;
+    const targetAlpha = smoothstep(a0, a1, dist);
 
-  // --- Idle aura: keep some particles visible even without crossings ---
-  useEffect(() => {
-    if (!idleAura) return;
+    // critically damped lerp toward target
+    const k = 1 - Math.exp(-dampK * Math.min(delta, 0.05));
+    alphaRef.current += (targetAlpha - alphaRef.current) * k;
 
-    // fire an initial gentle aura once on mount
-    burstRef.current?.burst(auraConfig);
+    const alpha = alphaRef.current;
 
-    const id = setInterval(() => {
-      // avoid spamming right after a crossing burst; reuse crossing cooldown
-      const now = performance.now() / 1000;
-      if (lastTriggerAt.current < 0 || now - lastTriggerAt.current > cooldown) {
-        burstRef.current?.burst(auraConfig);
-      }
-    }, auraInterval * 1000);
-
-    return () => clearInterval(id);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [idleAura, auraInterval]);
-
-  useFrame(({ clock }) => {
-    const portal = groupRef.current;
-    const bird = birdRef?.current;
-    if (!portal || !bird) return;
-
-    const birdWorld = tmpVec.setFromMatrixPosition(bird.matrixWorld);
-    const dist = signedDistanceToPortalPlane(birdWorld);
-
-    // first frame init
-    if (prevZ.current === null) {
-      prevZ.current = dist;
-      armed.current = Math.abs(dist) > eps;
-      return;
+    // apply to all texts (Troika Text supports fillOpacity + outlineOpacity)
+    for (const t of shadowRefs.current) {
+      if (!t) continue;
+      t.fillOpacity = alpha * shadowOpacity;
+      t.outlineOpacity = 0; // shadows use fill only
+    }
+    if (mainTextRef.current) {
+      mainTextRef.current.fillOpacity = alpha;
+      mainTextRef.current.outlineOpacity = alpha; // keep halo in sync
     }
 
-    // arm when clearly outside the band
-    if (!armed.current && Math.abs(dist) > eps * 2) {
-      armed.current = true;
-    }
-
-    const was = prevZ.current;
-    const tnow = clock.getElapsedTime();
-    const cooled = tnow - lastTriggerAt.current > cooldown;
-
-    // detect crossing
-    const crossed =
-      armed.current &&
-      cooled &&
-      ((was > eps && dist < -eps) ||
-        (was < -eps && dist > eps) ||
-        (Math.abs(dist) <= eps && Math.abs(was) > eps));
-
-    if (crossed) {
-      // (legacy) keep sampler in sync — not required by SurfaceBurstOnBird
-      matchSamplerToBird();
-
-      // IMPORTANT: trigger the bird-attached burst (not ColibriParticles)
-      burstRef.current?.burst(crossingBurst);
-
-      lastTriggerAt.current = tnow;
-      armed.current = false;
-    }
-
-    prevZ.current = dist;
+    // optional: toggle visibility for perf when invisible
+    groupRef.current.visible = alpha > 0.005;
   });
 
   return (
-    <>
-      <group ref={groupRef} position={position} rotation={rotation}>
-        {/* Optional label */}
-        {label && (
-          <DottedText
-            position={[0, 0, 0.2]}
-            font={fontUrl}
-            fontSize={labelSize}
-            color={labelColor}
-            anchorX="center"
-            anchorY="middle"
-            textAlign="center"
-            maxWidth={4}
-            lineHeight={1.2}
-            dotScale={1.5}
-            dotSize={2.3}
-            fillBg={false}
-          >
-            {label}
-          </DottedText>
-        )}
-      </group>
-    </>
+    <group ref={groupRef} position={position} rotation={rotation}>
+      <Text
+        ref={mainTextRef}
+        position={[0, 0, 0.2]}
+        font={fontUrl}
+        fontSize={labelSize}
+        color={labelColor}
+        anchorX="center"
+        anchorY="middle"
+        textAlign="center"
+        maxWidth={4}
+        lineHeight={1.2}
+      >
+        {label}
+      </Text>
+    </group>
   );
 });
 
