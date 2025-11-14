@@ -1,0 +1,42 @@
+@font-face {
+  font-family: "NeueMachina";
+  src: url("/fonts/Neue_Machina.otf") format("opentype");
+  font-weight: normal;
+  font-style: normal;
+}
+
+html,
+body {
+  margin: 0;
+  padding: 0;
+  height: 100%;
+  overflow-y: auto;
+  font-family: "NeueMachina";
+  background: transparent;
+  color: rgb(231, 250, 252);
+}
+
+canvas {
+  position: fixed;
+  top: 0;
+  left: 0;
+
+  pointer-events: auto;
+}
+
+.scroll-section {
+  height: 100vh;
+  width: 100vw;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.canvas-container {
+  position: fixed;
+  top: 0;
+  left: 0;
+  z-index: 1;
+  width: 100vw;
+  height: 100vh;
+}

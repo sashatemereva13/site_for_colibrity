@@ -1,0 +1,29 @@
+{
+  "name": "c-project",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "lint": "eslint .",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "@react-spring/three": "^10.0.1",
+    "@react-three/drei": "^9.96.3",
+    "@react-three/fiber": "^8.15.5",
+    "@react-three/postprocessing": "^2.8.5",
+    "gsap": "^3.13.0",
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0",
+    "three": "^0.160.0"
+  },
+  "devDependencies": {
+    "@vitejs/plugin-react": "^4.2.1",
+    "eslint": "^8.57.0",
+    "eslint-plugin-react-hooks": "^4.6.0",
+    "eslint-plugin-react-refresh": "^0.4.20",
+    "vite": "^5.2.0"
+  }
+}
